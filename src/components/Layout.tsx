@@ -46,7 +46,7 @@ export function Layout({ children }: LayoutProps) {
           <Sidebar onClose={() => setIsSidebarOpen(false)} />
         </div>
 
-        <main className="flex-1 px-2 py-6 lg:pl-5 lg:ml-64 overflow-x-hidden">
+        <main className="flex-1 px-2 py-6 lg:pl-5  overflow-x-hidden">
           <div className="max-w-[1400px] mx-auto">
             {children}
           </div>
