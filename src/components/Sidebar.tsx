@@ -27,7 +27,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full">
+<aside className="mt-0 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full">
       <div className="flex justify-between items-center lg:hidden p-4 border-b border-gray-200 dark:border-gray-700">
         <span className="text-xl font-semibold text-gray-900 dark:text-white">
           Menu
