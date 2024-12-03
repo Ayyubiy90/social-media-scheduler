@@ -23,7 +23,7 @@ export function PlatformSelector({ selected, onChange }: PlatformSelectorProps) 
         className={`p-2 rounded-md ${
           selected.includes('twitter')
             ? 'bg-blue-900 text-blue-100'
-            : 'bg-gray-700 text-gray-300'
+            : 'bg-white text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
         } dark:hover:bg-gray-600`}
       >
         <Twitter className="h-6 w-6" />
@@ -34,7 +34,7 @@ export function PlatformSelector({ selected, onChange }: PlatformSelectorProps) 
         className={`p-2 rounded-md ${
           selected.includes('instagram')
             ? 'bg-pink-900 text-pink-100'
-            : 'bg-gray-700 text-gray-300'
+            : 'bg-white text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
         } dark:hover:bg-gray-600`}
       >
         <Instagram className="h-6 w-6" />
@@ -45,7 +45,7 @@ export function PlatformSelector({ selected, onChange }: PlatformSelectorProps) 
         className={`p-2 rounded-md ${
           selected.includes('linkedin')
             ? 'bg-blue-900 text-blue-100'
-            : 'bg-gray-700 text-gray-300'
+            : 'bg-white text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
         } dark:hover:bg-gray-600`}
       >
         <Linkedin className="h-6 w-6" />
