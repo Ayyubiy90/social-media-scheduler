@@ -13,9 +13,18 @@ interface PlatformBarChartProps {
 export function PlatformBarChart({ data }: PlatformBarChartProps) {
   const { isDark } = useTheme();
 
+  // Adding Facebook data
+  const facebookData = {
+    name: 'facebook',
+    followers: 1800,
+    engagement: 70,
+  };
+  
+  const combinedData = [...data, facebookData];
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data}>
+      <BarChart data={combinedData}>
         <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#e5e7eb'} />
         <XAxis 
           dataKey="name" 

@@ -1,4 +1,4 @@
-export type Platform = 'twitter' | 'instagram' | 'linkedin';
+export type Platform = 'twitter' | 'instagram' | 'linkedin' | 'facebook';
 
 export interface Post {
   id: string;

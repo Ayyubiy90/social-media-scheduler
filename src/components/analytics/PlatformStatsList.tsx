@@ -1,5 +1,5 @@
 import React from 'react';
-import { Twitter, Instagram, Linkedin } from 'lucide-react';
+import { Twitter, Instagram, Linkedin, Facebook } from 'lucide-react';
 
 interface PlatformStatsListProps {
   stats: Array<{
@@ -10,6 +10,8 @@ interface PlatformStatsListProps {
 }
 
 export function PlatformStatsList({ stats }: PlatformStatsListProps) {
+  console.log("Platform Stats List Data:", stats); // Log the received stats
+
   const getPlatformIcon = (platformName: string) => {
     switch (platformName) {
       case 'Twitter':
@@ -18,6 +20,8 @@ export function PlatformStatsList({ stats }: PlatformStatsListProps) {
         return <Instagram className="h-5 w-5 text-gray-400" />;
       case 'LinkedIn':
         return <Linkedin className="h-5 w-5 text-gray-400" />;
+      case 'Facebook':
+        return <Facebook className="h-5 w-5 text-gray-400" />;
       default:
         return null;
     }

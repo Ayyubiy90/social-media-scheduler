@@ -1,5 +1,4 @@
 import React from 'react';
-import { usePosts } from '../contexts/PostContext';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { useRealTimeMetrics } from '../hooks/useRealTimeMetrics';
 import { EngagementChart } from '../components/analytics/EngagementChart';
@@ -9,10 +8,12 @@ import { RealTimeMetrics } from '../components/analytics/RealTimeMetrics';
 import { PostPerformanceChart } from '../components/analytics/charts/PostPerformanceChart';
 
 export function Analytics() {
-  const { posts } = usePosts();
-  const { postPerformance } = useAnalytics();
+  const { postPerformance, platformStats } = useAnalytics();
   const realTimeMetrics = useRealTimeMetrics();
-  
+
+  console.log("Post Performance:", postPerformance);
+  console.log("Platform Stats:", platformStats);
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Analytics Dashboard</h1>
@@ -36,7 +37,9 @@ export function Analytics() {
           </div>
         </div>
 
-        <PostPerformance />
+        <div>
+          <PostPerformance />
+        </div>
       </div>
     </div>
   );

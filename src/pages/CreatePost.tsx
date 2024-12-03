@@ -32,6 +32,10 @@ export function CreatePost() {
   });
 
   const onSubmit = (data: PostFormData) => {
+    // Handle post submission for Facebook
+    if (data.platforms.includes('facebook')) {
+      console.log('Facebook post submitted:', data);
+    }
     console.log('Form submitted:', data);
   };
 
