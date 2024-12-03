@@ -27,7 +27,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   ];
 
   return (
-<aside className="mt-0 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full">
+    <aside className="mt-0 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full">
       <div className="flex justify-between items-center lg:hidden p-4 border-b border-gray-200 dark:border-gray-700">
         <span className="text-xl font-semibold text-gray-900 dark:text-white">
           Menu
@@ -38,7 +38,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           <span className="sr-only">Close menu</span>×
         </button>
       </div>
-      <nav className="mt-0 px-2 space-y-1">
+<nav className="pt-4 px-2 space-y-1">
         {navItems.map(({ path, icon: Icon, label }) => (
           <div key={path} onClick={onClose}>
             <Link href={path}>
