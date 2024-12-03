@@ -29,16 +29,16 @@ export function PlatformStatsList({ stats }: PlatformStatsListProps) {
         <div key={platform.name} className="flex items-center justify-between">
           <div className="flex items-center">
             {getPlatformIcon(platform.name)}
-            <span className="ml-2 text-sm font-medium text-gray-900">{platform.name}</span>
+            <span className="ml-2 text-sm font-medium text-gray-900 dark:text-white">{platform.name}</span>
           </div>
           <div className="flex space-x-4 text-sm">
             <div>
-              <span className="text-gray-500">Followers:</span>
-              <span className="ml-1 font-medium text-gray-900">{platform.followers}</span>
+              <span className="text-gray-500 dark:text-gray-300">Followers:</span>
+              <span className="ml-1 font-medium text-gray-900 dark:text-white">{platform.followers}</span>
             </div>
             <div>
-              <span className="text-gray-500">Engagement:</span>
-              <span className="ml-1 font-medium text-gray-900">{platform.engagement}%</span>
+              <span className="text-gray-500 dark:text-gray-300">Engagement:</span>
+              <span className="ml-1 font-medium text-gray-900 dark:text-white">{platform.engagement}%</span>
             </div>
           </div>
         </div>

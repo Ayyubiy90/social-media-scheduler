@@ -20,11 +20,11 @@ export function PlatformBarChart({ data }: PlatformBarChartProps) {
         <XAxis 
           dataKey="name" 
           stroke={isDark ? '#9CA3AF' : '#4B5563'}
-          tick={{ fill: isDark ? '#9CA3AF' : '#4B5563' }}
+          tick={{ fill: isDark ? '#FFFFFF' : '#4B5563' }}
         />
         <YAxis 
           stroke={isDark ? '#9CA3AF' : '#4B5563'}
-          tick={{ fill: isDark ? '#9CA3AF' : '#4B5563' }}
+          tick={{ fill: isDark ? '#FFFFFF' : '#4B5563' }}
         />
         <Tooltip 
           contentStyle={{ 
