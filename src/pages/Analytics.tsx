@@ -6,6 +6,7 @@ import { PlatformStats } from '../components/analytics/PlatformStats';
 import { PostPerformance } from '../components/analytics/PostPerformance';
 import { RealTimeMetrics } from '../components/analytics/RealTimeMetrics';
 import { PostPerformanceChart } from '../components/analytics/charts/PostPerformanceChart';
+import { BarChart } from 'lucide-react'; // Importing the BarChart icon
 
 export function Analytics() {
   const { postPerformance, platformStats } = useAnalytics();
@@ -16,7 +17,10 @@ export function Analytics() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Analytics Dashboard</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
+        <BarChart className="h-6 w-6 mr-2" /> {/* Adding the icon */}
+        Analytics Dashboard
+      </h1>
       
       <div className="space-y-6">
         <RealTimeMetrics metrics={realTimeMetrics} />

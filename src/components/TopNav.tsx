@@ -1,14 +1,16 @@
 import React from 'react';
-import { Menu, X, Bell, Settings } from 'lucide-react';
+import { Menu, X, Bell, Settings, Share2 } from 'lucide-react'; // Importing the Share2 icon
 import { useUser } from '../contexts/UserContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { ThemeToggle } from './ThemeToggle';
 
 interface TopNavProps {
   onMenuClick: () => void;
+  isMenuOpen: boolean; // New prop to track menu state
+  onCloseMenu: () => void; // New prop to close the menu
 }
 
-export function TopNav({ onMenuClick }: TopNavProps) {
+export function TopNav({ onMenuClick, isMenuOpen, onCloseMenu }: TopNavProps) {
   const { user } = useUser();
   const { showNotification } = useNotifications();
 
@@ -24,6 +26,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
               <Menu className="h-6 w-6 text-gray-500 dark:text-gray-200" />
             </button>
             <div className="flex-shrink-0 flex items-center ml-4 lg:ml-0">
+              <Share2 className="h-6 w-6 mr-2 text-gray-500 dark:text-gray-200" />
               <span className="text-xl font-semibold text-gray-900 dark:text-white">
                 Social Media Scheduler
               </span>
@@ -47,6 +50,18 @@ export function TopNav({ onMenuClick }: TopNavProps) {
             />
           </div>
         </div>
+        {isMenuOpen && ( // Conditional rendering for mobile menu
+          <div className="lg:hidden">
+            <div className="absolute top-0 right-0 p-4">
+              <button onClick={onCloseMenu}>
+                <X className="h-6 w-6 text-gray-500 dark:text-gray-200" />
+              </button>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
+              {/* Add your mobile menu items here */}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
