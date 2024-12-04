@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, X, Bell, Settings, Share2 } from 'lucide-react'; // Importing the Share2 icon
+import { Menu, X, Bell, Settings, CalendarCheck } from 'lucide-react'; // Importing the CalendarCheck icon
 import { useUser } from '../contexts/UserContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { ThemeToggle } from './ThemeToggle';
@@ -26,7 +26,7 @@ export function TopNav({ onMenuClick, isMenuOpen, onCloseMenu }: TopNavProps) {
               <Menu className="h-6 w-6 text-gray-500 dark:text-gray-200" />
             </button>
             <div className="flex-shrink-0 flex items-center ml-4 lg:ml-0">
-              <Share2 className="h-6 w-6 mr-2 text-gray-500 dark:text-gray-200" />
+              <CalendarCheck className="h-6 w-6 mr-2 text-gray-500 dark:text-gray-200" />
               <span className="text-xl font-semibold text-gray-900 dark:text-white">
                 Social Media Scheduler
               </span>
