@@ -1,13 +1,17 @@
 import React from 'react';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useUser } from '../contexts/UserContext';
+import { Settings as SettingsIcon } from 'lucide-react'; // Importing the Settings icon
 
 export function Settings() {
   const { user } = useUser();
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Settings</h1>
+  <div className="flex items-center">
+    <SettingsIcon className="h-6 w-6 mr-2 mb-5" />
+    <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Settings</h1>
+  </div>
       
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg divide-y divide-gray-200 dark:divide-gray-700">
         <div className="p-6">
