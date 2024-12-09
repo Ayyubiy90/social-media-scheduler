@@ -1,6 +1,10 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const db = require('./firebaseConfig.cjs'); // Import Firebase configuration
+const Queue = require('bull');
+const { DateTime } = require('luxon'); // For handling date and time
+
+const postQueue = new Queue('postQueue'); // Create a new Bull queue for posts
 
 const app = express();
 app.use(bodyParser.json());
@@ -21,20 +25,21 @@ app.post('/users', async (req, res) => {
     }
 });
 
-// Create Post
-app.post('/posts', async (req, res) => {
-    const { title, content, userId } = req.body; // Example fields
+// Schedule Post
+app.post('/schedule', async (req, res) => {
+    const { title, content, userId, scheduledTime, platform } = req.body; // Example fields
     try {
-        const postRef = await db.collection('posts').add({
+        const job = await postQueue.add({
             title,
             content,
             userId,
-            createdAt: new Date(),
+            platform,
+            scheduledTime: DateTime.fromISO(scheduledTime).toJSDate(), // Convert to Date object
         });
-        res.status(201).send({ id: postRef.id });
+        res.status(201).send({ id: job.id, message: 'Post scheduled successfully' });
     } catch (error) {
-        console.error('Error creating post:', error);
-        res.status(500).send({ error: 'Error creating post', details: error.message });
+        console.error('Error scheduling post:', error);
+        res.status(500).send({ error: 'Error scheduling post', details: error.message });
     }
 });
 
@@ -88,6 +93,60 @@ app.delete('/posts/:postId', async (req, res) => {
     } catch (error) {
         console.error('Error deleting post:', error);
         res.status(500).send({ error: 'Error deleting post', details: error.message });
+    }
+});
+
+// Process scheduled posts
+postQueue.process(async (job) => {
+    const { title, content, userId, platform } = job.data;
+    try {
+        console.log(`Publishing post to ${platform}: ${title}`);
+        await db.collection('posts').add({
+            title,
+            content,
+            userId,
+            publishedAt: new Date(),
+        });
+    } catch (error) {
+        console.error('Error publishing post:', error);
+        throw new Error('Failed to publish post');
+    }
+});
+
+// Reschedule Post
+app.post('/reschedule/:jobId', async (req, res) => {
+    const { jobId } = req.params;
+    const { scheduledTime } = req.body; // New scheduled time
+    try {
+        const job = await postQueue.getJob(jobId);
+        if (job) {
+            await job.update({
+                scheduledTime: DateTime.fromISO(scheduledTime).toJSDate(),
+            });
+            res.status(200).send({ message: 'Post rescheduled successfully' });
+        } else {
+            res.status(404).send({ error: 'Job not found' });
+        }
+    } catch (error) {
+        console.error('Error rescheduling post:', error);
+        res.status(500).send({ error: 'Error rescheduling post', details: error.message });
+    }
+});
+
+// Cancel Scheduled Post
+app.delete('/cancel/:jobId', async (req, res) => {
+    const { jobId } = req.params;
+    try {
+        const job = await postQueue.getJob(jobId);
+        if (job) {
+            await job.remove();
+            res.status(200).send({ message: 'Post scheduling canceled successfully' });
+        } else {
+            res.status(404).send({ error: 'Job not found' });
+        }
+    } catch (error) {
+        console.error('Error canceling post:', error);
+        res.status(500).send({ error: 'Error canceling post', details: error.message });
     }
 });
 
