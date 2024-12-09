@@ -9,8 +9,25 @@ redisClient.on('error', (error) => {
     console.error('Redis error:', error);
 });
 
-const postQueue = new Queue('postQueue', 'redis://127.0.0.1:6379');
-const notificationQueue = new Queue('notificationQueue', 'redis://127.0.0.1:6379');
+const postQueue = new Queue('postQueue', {
+    redis: 'redis://127.0.0.1:6379',
+    settings: {
+        backoff: {
+            type: 'exponential',
+            delay: 5000 // 5 seconds
+        }
+    }
+});
+
+const notificationQueue = new Queue('notificationQueue', {
+    redis: 'redis://127.0.0.1:6379',
+    settings: {
+        backoff: {
+            type: 'exponential',
+            delay: 5000 // 5 seconds
+        }
+    }
+});
 
 postQueue.process(async (job, done) => {
     const { platform, content, scheduledTime } = job.data;
@@ -23,13 +40,37 @@ postQueue.process(async (job, done) => {
     }
 });
 
+const admin = require('firebase-admin');
+const db = require('./firebaseConfig.cjs');
+
 notificationQueue.process(async (job, done) => {
     const { userId, postId, scheduledTime } = job.data;
     try {
         // Implement the logic to send a notification to the user
-        console.log(`Sending notification to user ${userId} for post ${postId} at ${scheduledTime}`);
+        const userRef = await db.collection('users').doc(userId).get();
+        if (!userRef.exists) {
+            return done(new Error('User not found'));
+        }
+
+        const user = userRef.data();
+        const postRef = await db.collection('posts').doc(postId).get();
+        if (!postRef.exists) {
+            return done(new Error('Post not found'));
+        }
+
+        const post = postRef.data();
+        const notification = {
+            userId,
+            postId,
+            message: `New post: ${post.content}`,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('notifications').add(notification);
+        console.log(`Notification sent to user ${userId} for post ${postId} at ${scheduledTime}`);
         done();
     } catch (error) {
+        console.error('Error sending notification:', error);
         done(new Error('Failed to send notification'));
     }
 });
