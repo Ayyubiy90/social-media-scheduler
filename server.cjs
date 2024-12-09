@@ -54,7 +54,18 @@ app.get('/posts/:userId', async (req, res) => {
 // Update Post
 app.put('/posts/:postId', async (req, res) => {
     const { postId } = req.params;
-    const { title, content } = req.body; // Fields to update
+    const { title, content, platform } = req.body; // Fields to update
+    const characterLimits = {
+        facebook: 63206,
+        instagram: 2200,
+        twitter: 280,
+        linkedin: 3000,
+    };
+
+    // Validate post content based on platform
+    if (content.length > characterLimits[platform]) {
+        return res.status(400).send({ error: `Content exceeds ${characterLimits[platform]} characters for ${platform}.` });
+    }
     try {
         await db.collection('posts').doc(postId).update({
             title,
