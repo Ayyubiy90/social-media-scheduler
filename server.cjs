@@ -16,8 +16,25 @@ app.post('/users', async (req, res) => {
         });
         res.status(201).send({ id: userRef.id });
     } catch (error) {
-        console.error('Error creating user:', error); // Log the error
+        console.error('Error creating user:', error);
         res.status(500).send({ error: 'Error creating user', details: error.message });
+    }
+});
+
+// Create Post
+app.post('/posts', async (req, res) => {
+    const { title, content, userId } = req.body; // Example fields
+    try {
+        const postRef = await db.collection('posts').add({
+            title,
+            content,
+            userId,
+            createdAt: new Date(),
+        });
+        res.status(201).send({ id: postRef.id });
+    } catch (error) {
+        console.error('Error creating post:', error);
+        res.status(500).send({ error: 'Error creating post', details: error.message });
     }
 });
 
