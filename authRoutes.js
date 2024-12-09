@@ -20,11 +20,9 @@ router.post('/register', async (req, res) => {
 
 // User Login
 router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { email } = req.body; // Removed password handling
     try {
         const userRecord = await getAuth().getUserByEmail(email);
-        // Here you would typically verify the password using a custom method
-        // For simplicity, we are just returning the user record
         res.status(200).send({ uid: userRecord.uid });
     } catch (error) {
         res.status(400).send({ error: error.message });

@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-import { db } from './firebaseConfig.js'; // Import Firebase configuration
+import { db } from './firebaseConfig.cjs'; // Import Firebase configuration from the new file
 import authRoutes from './authRoutes.js'; // Import authentication routes
 
 app.use('/auth', authRoutes); // Set up authentication routes
