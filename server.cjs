@@ -38,6 +38,19 @@ app.post('/posts', async (req, res) => {
     }
 });
 
+// Read Posts by User ID
+app.get('/posts/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const postsSnapshot = await db.collection('posts').where('userId', '==', userId).get();
+        const posts = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.status(200).send(posts);
+    } catch (error) {
+        console.error('Error fetching posts:', error);
+        res.status(500).send({ error: 'Error fetching posts', details: error.message });
+    }
+});
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
