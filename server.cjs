@@ -51,6 +51,35 @@ app.get('/posts/:userId', async (req, res) => {
     }
 });
 
+// Update Post
+app.put('/posts/:postId', async (req, res) => {
+    const { postId } = req.params;
+    const { title, content } = req.body; // Fields to update
+    try {
+        await db.collection('posts').doc(postId).update({
+            title,
+            content,
+            updatedAt: new Date(),
+        });
+        res.status(200).send({ message: 'Post updated successfully' });
+    } catch (error) {
+        console.error('Error updating post:', error);
+        res.status(500).send({ error: 'Error updating post', details: error.message });
+    }
+});
+
+// Delete Post
+app.delete('/posts/:postId', async (req, res) => {
+    const { postId } = req.params;
+    try {
+        await db.collection('posts').doc(postId).delete();
+        res.status(200).send({ message: 'Post deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        res.status(500).send({ error: 'Error deleting post', details: error.message });
+    }
+});
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
