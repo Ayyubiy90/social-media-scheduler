@@ -1,11 +1,11 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('./backend/admin/serviceAccountKey.json'); // Use require to load the service account key
+const serviceAccount = require('./backend/admin/serviceAccountKey.json'); // Updated path to service account key
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://<your-database-name>.firebaseio.com' // Update with your database URL
+  databaseURL: "https://<YOUR_PROJECT_ID>.firebaseio.com" // Update with your database URL
 });
 
-const db = admin.firestore(); // Use Firestore or Realtime Database as needed
+const db = admin.firestore();
 
-module.exports = { db };
+module.exports = db;
