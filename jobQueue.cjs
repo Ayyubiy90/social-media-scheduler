@@ -128,6 +128,43 @@ postQueue.process(async (job) => {
   }
 });
 
+// Notification Queue Processing
+notificationQueue.process(async (job) => {
+  const { userId, postId, message } = job.data;
+
+  try {
+    // Get user data
+    const userRef = await db.collection("users").doc(userId).get();
+    if (!userRef.exists) {
+      throw new Error("User not found");
+    }
+    const user = userRef.data();
+
+    // Get post data
+    const postRef = await db.collection("posts").doc(postId).get();
+    if (!postRef.exists) {
+      throw new Error("Post not found");
+    }
+    const post = postRef.data();
+
+    // Send notification (e.g., email, push notification)
+    console.log(
+      `Sending notification to user ${userId} for post ${postId}: ${message}`
+    );
+
+    // Update notification status
+    await db.collection("notifications").doc(job.id).update({
+      status: "sent",
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Notification processing error:", error);
+    throw error;
+  }
+});
+
 // Enhanced job management functions
 const createPostJob = async (postId, platforms, scheduledTime) => {
   try {
@@ -208,20 +245,91 @@ const reschedulePostJob = async (jobId, postId, newScheduledTime) => {
   }
 };
 
-// Event handlers for monitoring
-postQueue.on("completed", async (job) => {
-  console.log(`Job ${job.id} completed successfully`);
-});
+const createNotificationJob = async (
+  userId,
+  postId,
+  scheduledTime,
+  message
+) => {
+  try {
+    const job = await notificationQueue.add(
+      { userId, postId, message },
+      {
+        delay: scheduledTime - Date.now(),
+        attempts: 3,
+        removeOnComplete: false, // Keep job data for history
+      }
+    );
 
-postQueue.on("failed", async (job, error) => {
-  console.error(`Job ${job.id} failed:`, error);
-  const { postId } = job.data;
-  await PlatformPublisher.updatePostStatus(postId, "status", "failed");
-});
+    await db
+      .collection("notifications")
+      .doc(job.id)
+      .set({
+        userId,
+        postId,
+        message,
+        scheduledTime: admin.firestore.Timestamp.fromMillis(scheduledTime),
+        status: "scheduled",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
-postQueue.on("stalled", async (job) => {
-  console.warn(`Job ${job.id} stalled`);
-});
+    return job;
+  } catch (error) {
+    console.error("Error creating notification job:", error);
+    throw error;
+  }
+};
+
+const cancelNotificationJob = async (jobId) => {
+  try {
+    const job = await notificationQueue.getJob(jobId);
+    if (!job) {
+      throw new Error("Job not found");
+    }
+
+    await job.remove();
+    await db.collection("notifications").doc(jobId).update({
+      status: "cancelled",
+      cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error canceling notification:", error);
+    throw error;
+  }
+};
+
+const rescheduleNotificationJob = async (jobId, newScheduledTime) => {
+  try {
+    const job = await notificationQueue.getJob(jobId);
+    if (!job) {
+      throw new Error("Job not found");
+    }
+
+    await job.remove();
+    const newJob = await createNotificationJob(
+      job.data.userId,
+      job.data.postId,
+      newScheduledTime,
+      job.data.message
+    );
+
+    await db
+      .collection("notifications")
+      .doc(jobId)
+      .update({
+        scheduledTime: admin.firestore.Timestamp.fromMillis(newScheduledTime),
+        status: "scheduled",
+        rescheduledAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+    return newJob;
+  } catch (error) {
+    console.error("Error rescheduling notification:", error);
+    throw error;
+  }
+};
 
 module.exports = {
   createPostJob,

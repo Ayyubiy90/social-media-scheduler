@@ -134,7 +134,7 @@ async function setupCollections() {
 async function setupIndexes() {
   try {
     // Index for posts by userId and status
-    await db.collection("posts").doc("__dummy__").set({});
+    await db.collection("posts").doc("indexSetup").set({});
     await db
       .collection("posts")
       .where("userId", "==", "")
@@ -142,7 +142,7 @@ async function setupIndexes() {
       .get();
 
     // Index for notifications by userId and status
-    await db.collection("notifications").doc("__dummy__").set({});
+    await db.collection("notifications").doc("indexSetup").set({});
     await db
       .collection("notifications")
       .where("userId", "==", "")
