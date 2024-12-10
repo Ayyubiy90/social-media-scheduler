@@ -1,36 +1,28 @@
 import React from 'react';
-import { Route, Switch } from 'wouter';
-import { Layout } from './components/Layout';
-import { Dashboard } from './pages/Dashboard';
-import { CreatePost } from './pages/CreatePost';
-import { EditPost } from './pages/EditPost';
-import { Calendar } from './pages/Calendar';
-import { Analytics } from './pages/Analytics';
-import { Settings } from './pages/Settings';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { UserProvider } from './contexts/UserContext';
-import { PostProvider } from './contexts/PostContext';
-import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
 
-export default function App() {
+const App = () => {
   return (
     <ThemeProvider>
-      <NotificationProvider>
-        <UserProvider>
-          <PostProvider>
-            <Layout>
-              <Switch>
-                <Route path="/" component={Dashboard} />
-                <Route path="/create" component={CreatePost} />
-                <Route path="/edit/:id" component={EditPost} />
-                <Route path="/calendar" component={Calendar} />
-                <Route path="/analytics" component={Analytics} />
-                <Route path="/settings" component={Settings} />
-              </Switch>
-            </Layout>
-          </PostProvider>
-        </UserProvider>
-      </NotificationProvider>
+      <UserProvider>
+        <Router>
+          <div className="min-h-screen bg-white dark:bg-gray-900">
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </div>
+        </Router>
+      </UserProvider>
     </ThemeProvider>
   );
-}
+};
+
+export default App;

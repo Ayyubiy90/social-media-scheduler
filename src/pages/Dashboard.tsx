@@ -1,41 +1,74 @@
-import React from 'react';
-import { Plus } from 'lucide-react';
-import { Link } from 'wouter';
-import { PostCard } from '../components/PostCard';
-import { usePosts } from '../contexts/PostContext';
+import React, { useState } from 'react';
+import { useUser } from '../contexts/UserContext';
+import { useNavigate } from 'react-router-dom';
+import { ThemeToggle } from '../components/ThemeToggle';
 
-export function Dashboard() {
-  const { posts } = usePosts();
+const Dashboard = () => {
+    const { user, logout } = useUser();
+    const navigate = useNavigate();
+    const [copied, setCopied] = useState(false);
 
-  return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Welcome Back!</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Manage and schedule your social media posts
-            </p>
-          </div>
-          <Link href="/create">
-            <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              <Plus className="h-5 w-5 mr-2" />
-              Create Post
-            </button>
-          </Link>
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
+    const copyToClipboard = async () => {
+        if (user?.token) {
+            try {
+                await navigator.clipboard.writeText(user.token);
+                setCopied(true);
+                // Reset the "Copied!" message after 2 seconds
+                setTimeout(() => setCopied(false), 2000);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+            }
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+            <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+                <div className="px-4 py-6 sm:px-0">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-4">
+                                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Dashboard</h1>
+                                <ThemeToggle />
+                            </div>
+                            <button
+                                onClick={handleLogout}
+                                className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            >
+                                Logout
+                            </button>
+                        </div>
+                        <div className="text-gray-600 dark:text-gray-300">
+                            <p className="mb-2">Welcome to your dashboard!</p>
+                            <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
+                                <div className="flex items-center justify-between mb-1">
+                                    <p className="font-medium">Authentication Token:</p>
+                                    <button
+                                        onClick={copyToClipboard}
+                                        className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                                            copied 
+                                                ? 'bg-green-500 text-white' 
+                                                : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-700 dark:text-blue-100 dark:hover:bg-blue-600'
+                                        }`}
+                                    >
+                                        {copied ? 'Copied!' : 'Copy Token'}
+                                    </button>
+                                </div>
+                                <p className="text-sm break-all font-mono bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-600">
+                                    {user?.token}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
+    );
+};
 
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
-        <div className="p-6">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Recent Posts</h2>
-          <div className="space-y-4">
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+export default Dashboard;
