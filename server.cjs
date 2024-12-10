@@ -44,6 +44,7 @@ app.use("/auth", authRoutes);
 
 // Post management endpoints
 const { verifyToken, verifySession } = require('./src/middleware/authMiddleware.cjs');
+const { validatePostMiddleware } = require('./src/middleware/postValidation.cjs');
 
 app.post("/schedule", (req, res) => {
   const { platform, content, scheduledTime } = req.body;
@@ -54,21 +55,35 @@ app.post("/schedule", (req, res) => {
     );
 });
 
-app.post("/posts", verifyToken, verifySession, async (req, res) => {
-  const { content, draft } = req.body;
+app.post("/posts", verifyToken, verifySession, validatePostMiddleware, async (req, res) => {
+  const { content, platforms, draft } = req.body;
   const { uid } = req.user;
-
-  // Content validation
-  if (!content || content.trim() === '') {
-    return res.status(400).json({ error: 'Content cannot be empty' });
-  }
 
   try {
     const newPost = {
-      content,
+      content: {
+        text: content.text,
+        media: content.media || [],
+        links: content.links || []
+      },
+      platforms: platforms.reduce((acc, platform) => {
+        acc[platform] = { enabled: true, status: 'pending' };
+        return acc;
+      }, {}),
       author: uid,
       draft: draft || false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      status: draft ? 'draft' : 'pending',
+      analytics: {
+        likes: 0,
+        shares: 0,
+        comments: 0,
+        reach: 0
+      },
+      metadata: {
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        publishedAt: null
+      }
     };
 
     const postRef = await db.collection('posts').add(newPost);
@@ -108,14 +123,9 @@ app.get("/posts/:postId", verifyToken, verifySession, async (req, res) => {
   }
 });
 
-app.put("/posts/:postId", verifyToken, verifySession, async (req, res) => {
+app.put("/posts/:postId", verifyToken, verifySession, validatePostMiddleware, async (req, res) => {
   const { postId } = req.params;
-  const { content } = req.body;
-
-  // Content validation
-  if (!content || content.trim() === '') {
-    return res.status(400).json({ error: 'Content cannot be empty' });
-  }
+  const { content, platforms } = req.body;
 
   try {
     const postRef = await db.collection('posts').doc(postId).get();
@@ -123,7 +133,20 @@ app.put("/posts/:postId", verifyToken, verifySession, async (req, res) => {
       return res.status(404).json({ error: 'Post not found.' });
     }
 
-    await postRef.ref.update({ content });
+    const updateData = {
+      content: {
+        text: content.text,
+        media: content.media || [],
+        links: content.links || []
+      },
+      platforms: platforms.reduce((acc, platform) => {
+        acc[platform] = { enabled: true, status: 'pending' };
+        return acc;
+      }, {}),
+      'metadata.updatedAt': admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await postRef.ref.update(updateData);
     res.json({ message: "Post updated successfully." });
   } catch (error) {
     console.error('Error updating post:', error);
