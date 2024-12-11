@@ -19,15 +19,12 @@ router.post("/register", async (req, res) => {
       password,
     });
 
-    // Create a session cookie that will be used to get an ID token
-    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-    const sessionCookie = await admin
-      .auth()
-      .createSessionCookie(userRecord.uid, { expiresIn });
+    // Create a custom token
+    const token = await getAuth().createCustomToken(userRecord.uid);
 
     res.status(201).send({
       uid: userRecord.uid,
-      token: sessionCookie,
+      token,
       message: "Registration successful",
     });
   } catch (error) {
@@ -41,18 +38,12 @@ router.post("/login", async (req, res) => {
   try {
     const userRecord = await getAuth().getUserByEmail(email);
 
-    // Generate an ID token for the user
-    const idToken = await admin.auth().createCustomToken(userRecord.uid);
-    const userCredential = await admin.auth().verifyCustomToken(idToken);
-    const finalToken = await admin
-      .auth()
-      .createSessionCookie(userCredential.uid, {
-        expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
-      });
+    // Create a custom token
+    const token = await getAuth().createCustomToken(userRecord.uid);
 
     res.status(200).send({
       uid: userRecord.uid,
-      token: finalToken,
+      token,
       message: "Login successful",
     });
   } catch (error) {
@@ -65,7 +56,6 @@ router.post("/logout", verifyToken, async (req, res) => {
   const { uid } = req.user;
   try {
     await getAuth().revokeRefreshTokens(uid);
-    res.clearCookie("session");
     res.status(200).send({ message: "User logged out successfully" });
   } catch (error) {
     res.status(500).send({ error: "Failed to logout user" });
@@ -85,21 +75,10 @@ router.get(
   passport.authenticate("google", { failureRedirect: "/login" }),
   async (req, res) => {
     try {
-      const idToken = await admin.auth().createCustomToken(req.user.uid);
-      const userCredential = await admin.auth().verifyCustomToken(idToken);
-      const sessionCookie = await admin
-        .auth()
-        .createSessionCookie(userCredential.uid, {
-          expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
-        });
-      res.cookie("session", sessionCookie, {
-        maxAge: 5 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        secure: true,
-      });
-      res.redirect("/dashboard");
+      const token = await getAuth().createCustomToken(req.user.uid);
+      res.redirect(`/dashboard?token=${token}`);
     } catch (error) {
-      console.error("Error creating session:", error);
+      console.error("Error creating token:", error);
       res.redirect("/login");
     }
   }
@@ -116,21 +95,10 @@ router.get(
   passport.authenticate("facebook", { failureRedirect: "/login" }),
   async (req, res) => {
     try {
-      const idToken = await admin.auth().createCustomToken(req.user.uid);
-      const userCredential = await admin.auth().verifyCustomToken(idToken);
-      const sessionCookie = await admin
-        .auth()
-        .createSessionCookie(userCredential.uid, {
-          expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
-        });
-      res.cookie("session", sessionCookie, {
-        maxAge: 5 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        secure: true,
-      });
-      res.redirect("/dashboard");
+      const token = await getAuth().createCustomToken(req.user.uid);
+      res.redirect(`/dashboard?token=${token}`);
     } catch (error) {
-      console.error("Error creating session:", error);
+      console.error("Error creating token:", error);
       res.redirect("/login");
     }
   }
@@ -144,21 +112,10 @@ router.get(
   passport.authenticate("twitter", { failureRedirect: "/login" }),
   async (req, res) => {
     try {
-      const idToken = await admin.auth().createCustomToken(req.user.uid);
-      const userCredential = await admin.auth().verifyCustomToken(idToken);
-      const sessionCookie = await admin
-        .auth()
-        .createSessionCookie(userCredential.uid, {
-          expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
-        });
-      res.cookie("session", sessionCookie, {
-        maxAge: 5 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        secure: true,
-      });
-      res.redirect("/dashboard");
+      const token = await getAuth().createCustomToken(req.user.uid);
+      res.redirect(`/dashboard?token=${token}`);
     } catch (error) {
-      console.error("Error creating session:", error);
+      console.error("Error creating token:", error);
       res.redirect("/login");
     }
   }
@@ -172,21 +129,10 @@ router.get(
   passport.authenticate("linkedin", { failureRedirect: "/login" }),
   async (req, res) => {
     try {
-      const idToken = await admin.auth().createCustomToken(req.user.uid);
-      const userCredential = await admin.auth().verifyCustomToken(idToken);
-      const sessionCookie = await admin
-        .auth()
-        .createSessionCookie(userCredential.uid, {
-          expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
-        });
-      res.cookie("session", sessionCookie, {
-        maxAge: 5 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        secure: true,
-      });
-      res.redirect("/dashboard");
+      const token = await getAuth().createCustomToken(req.user.uid);
+      res.redirect(`/dashboard?token=${token}`);
     } catch (error) {
-      console.error("Error creating session:", error);
+      console.error("Error creating token:", error);
       res.redirect("/login");
     }
   }

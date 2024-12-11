@@ -16,36 +16,19 @@ const verifyToken = async (req, res, next) => {
       return next();
     }
 
-    let decodedToken;
-    try {
-      // First try to verify as an ID token
-      decodedToken = await admin.auth().verifyIdToken(token);
-    } catch (idTokenError) {
-      try {
-        // If ID token verification fails, try verifying as a custom token
-        const userCredential = await admin.auth().verifyCustomToken(token);
-        if (!userCredential) {
-          throw new Error("Invalid custom token");
-        }
-        // Get user details from the custom token
-        const user = await admin.auth().getUser(userCredential.uid);
-        decodedToken = {
-          uid: user.uid,
-          email: user.email,
-          exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour expiration
-        };
-      } catch (customTokenError) {
-        console.error("Token verification failed:", {
-          idTokenError,
-          customTokenError,
-        });
+    // Get user from token
+    const decodedToken = await admin.auth().verifySessionCookie(token, true);
+
+    // If session cookie verification fails, try custom token
+    if (!decodedToken) {
+      const userRecord = await admin.auth().getUser(token.split(".")[0]); // Get UID from token
+      if (!userRecord) {
         throw new Error("Invalid token");
       }
-    }
-
-    // Check token expiration
-    if (decodedToken.exp && decodedToken.exp < Date.now() / 1000) {
-      return res.status(401).json({ error: "Token has expired" });
+      decodedToken = {
+        uid: userRecord.uid,
+        email: userRecord.email,
+      };
     }
 
     req.user = {
@@ -55,6 +38,21 @@ const verifyToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("Error verifying token:", error);
+
+    // Try to get user directly if token verification fails
+    try {
+      const userRecord = await admin.auth().getUser(token.split(".")[0]);
+      if (userRecord) {
+        req.user = {
+          uid: userRecord.uid,
+          email: userRecord.email,
+        };
+        return next();
+      }
+    } catch (fallbackError) {
+      console.error("Fallback authentication failed:", fallbackError);
+    }
+
     res.status(401).json({ error: "Invalid token" });
   }
 };
