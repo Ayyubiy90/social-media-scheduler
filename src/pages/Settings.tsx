@@ -1,53 +1,158 @@
-import React from 'react';
-import { ThemeToggle } from '../components/ThemeToggle';
-import { useUser } from '../contexts/UserContext';
-import { Settings as SettingsIcon } from 'lucide-react'; // Importing the Settings icon
+import React from "react";
+import { SocialMediaConnector } from "../components/SocialMediaConnector";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { Settings as SettingsIcon } from "lucide-react";
 
-export function Settings() {
-  const { user } = useUser();
-
+const Settings = () => {
   return (
-    <div className="max-w-2xl mx-auto">
-  <div className="flex items-center">
-    <SettingsIcon className="h-6 w-6 mr-2 mb-5" />
-    <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Settings</h1>
-  </div>
-      
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg divide-y divide-gray-200 dark:divide-gray-700">
-        <div className="p-6">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Theme</h2>
-          <ThemeToggle />
-        </div>
-
-        <div className="p-6">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Profile</h2>
-          <div className="flex items-center space-x-4">
-            <img
-              src={user.avatar}
-              alt={user.name}
-              className="h-12 w-12 rounded-full"
-            />
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          {/* Header */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <SettingsIcon className="w-6 h-6" />
+                  Settings
+                </h1>
+              </div>
+              <ThemeToggle />
             </div>
           </div>
-        </div>
 
-        <div className="p-6">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Connected Platforms</h2>
-          <div className="space-y-4">
-            {user.connectedPlatforms.map((platform) => (
-              <div key={platform} className="flex items-center justify-between">
-                <span className="text-sm text-gray-900 dark:text-white capitalize">{platform}</span>
-                <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
-                  Connected
-                </span>
+          {/* Social Media Connections */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6">
+            <SocialMediaConnector />
+          </div>
+
+          {/* Platform-specific Settings */}
+          <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              Platform Settings
+            </h2>
+            <div className="space-y-4">
+              {/* Facebook Settings */}
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  Facebook
+                </h3>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
+                      defaultChecked
+                    />
+                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Auto-schedule posts during peak engagement times
+                    </span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
+                      defaultChecked
+                    />
+                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Include link previews
+                    </span>
+                  </label>
+                </div>
               </div>
-            ))}
+
+              {/* Twitter Settings */}
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  Twitter
+                </h3>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
+                      defaultChecked
+                    />
+                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Auto-thread long posts
+                    </span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
+                      defaultChecked
+                    />
+                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Include hashtag suggestions
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* LinkedIn Settings */}
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  LinkedIn
+                </h3>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
+                      defaultChecked
+                    />
+                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Post as company page (when available)
+                    </span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
+                      defaultChecked
+                    />
+                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Include article previews
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Instagram Settings */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  Instagram
+                </h3>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
+                      defaultChecked
+                    />
+                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Auto-crop images to optimal sizes
+                    </span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
+                      defaultChecked
+                    />
+                    <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Suggest popular hashtags
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default Settings;
