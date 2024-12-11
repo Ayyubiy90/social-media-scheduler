@@ -29,13 +29,16 @@ console.log(
 // CORS configuration
 app.use(
   cors({
-    origin: "http://localhost:5173", // Your frontend URL
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173"], // Your frontend URLs
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     exposedHeaders: ["set-cookie"],
   })
 );
+
+// Enable pre-flight requests for all routes
+app.options('*', cors());
 
 // Body parser middleware
 app.use(express.json());

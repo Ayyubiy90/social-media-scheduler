@@ -29,7 +29,8 @@ router.post("/register", async (req, res) => {
     res.cookie("session", sessionCookie, {
       maxAge: 5 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     });
     res.status(201).send({
       uid: userRecord.uid,
@@ -45,18 +46,19 @@ router.post("/login", async (req, res) => {
   const { token } = req.body; // Expecting the ID token from the client
   try {
     // Verify the ID token
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     // Generate a session cookie
-    const sessionCookie = await admin.auth().createSessionCookie(uid, {
+    const sessionCookie = await admin.auth().createSessionCookie(token, {
       expiresIn: 60 * 60 * 24 * 5 * 1000,
     }); // 5 days
 
     res.cookie("session", sessionCookie, {
       maxAge: 5 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     });
     res.status(200).send({
       uid: uid,
@@ -99,7 +101,8 @@ router.get(
       res.cookie("session", sessionCookie, {
         maxAge: 5 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       });
       res.redirect("/dashboard");
     } catch (error) {
@@ -128,7 +131,8 @@ router.get(
       res.cookie("session", sessionCookie, {
         maxAge: 5 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       });
       res.redirect("/dashboard");
     } catch (error) {
@@ -154,7 +158,8 @@ router.get(
       res.cookie("session", sessionCookie, {
         maxAge: 5 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       });
       res.redirect("/dashboard");
     } catch (error) {
@@ -180,7 +185,8 @@ router.get(
       res.cookie("session", sessionCookie, {
         maxAge: 5 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       });
       res.redirect("/dashboard");
     } catch (error) {

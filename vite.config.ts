@@ -7,4 +7,14 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    port: 5173,
+    proxy: {
+      '/auth': 'http://localhost:5000',
+      '/api': 'http://localhost:5000'
+    }
+  },
+  define: {
+    'process.env': {}
+  }
 });

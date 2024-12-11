@@ -11,6 +11,7 @@ import {
   logoutUser,
   subscribeToAuthChanges,
   socialLogin,
+  anonymousLogin,
   User,
 } from "../services/authService";
 
@@ -21,6 +22,7 @@ interface UserContextType {
   login: (credentials: { email: string; password: string }) => Promise<void>;
   register: (userData: { email: string; password: string }) => Promise<void>;
   socialLogin: (provider: string) => Promise<void>;
+  anonymousLogin: () => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
 }
@@ -80,6 +82,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const handleAnonymousLogin = async () => {
+    try {
+      clearError();
+      setLoading(true);
+      const userData = await anonymousLogin();
+      setUser(userData);
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSocialLogin = async (provider: string) => {
     try {
       clearError();
@@ -115,6 +130,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         login,
         register,
         socialLogin: handleSocialLogin,
+        anonymousLogin: handleAnonymousLogin,
         logout,
         clearError,
       }}>

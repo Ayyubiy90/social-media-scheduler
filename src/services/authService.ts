@@ -4,13 +4,16 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
-  GoogleAuthProvider,
-  FacebookAuthProvider,
-  TwitterAuthProvider,
+  signInAnonymously,
   signOut,
   onAuthStateChanged,
   User as FirebaseUser,
 } from "firebase/auth";
+import {
+  googleProvider,
+  facebookProvider,
+  twitterProvider
+} from "../config/authProviders";
 
 export interface User {
   token: string;
@@ -73,10 +76,13 @@ export const loginUser = async (credentials: Credentials): Promise<User> => {
 
     const user = await mapFirebaseUserToUser(userCredential.user);
 
+    // Get a fresh token with a long expiration
+    const token = await userCredential.user.getIdToken(true);
+
     // Verify with backend
     await axios.post<AuthResponse>(
       `${API_URL}/auth/login`,
-      { token: user.token },
+      { token },
       { withCredentials: true }
     );
 
@@ -97,10 +103,35 @@ export const registerUser = async (userData: Credentials): Promise<User> => {
 
     const user = await mapFirebaseUserToUser(userCredential.user);
 
+    // Get a fresh token with a long expiration
+    const token = await userCredential.user.getIdToken(true);
+
     // Register with backend
     await axios.post<AuthResponse>(
       `${API_URL}/auth/register`,
-      { token: user.token },
+      { token },
+      { withCredentials: true }
+    );
+
+    return user;
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+
+export const anonymousLogin = async (): Promise<User> => {
+  try {
+    const auth = getAuth();
+    const userCredential = await signInAnonymously(auth);
+    const user = await mapFirebaseUserToUser(userCredential.user);
+
+    // Get a fresh token with a long expiration
+    const token = await userCredential.user.getIdToken(true);
+
+    // Verify with backend
+    await axios.post<AuthResponse>(
+      `${API_URL}/auth/anonymous-login`,
+      { token },
       { withCredentials: true }
     );
 
@@ -113,29 +144,32 @@ export const registerUser = async (userData: Credentials): Promise<User> => {
 export const socialLogin = async (provider: string): Promise<User> => {
   try {
     const auth = getAuth();
-    let authProvider;
+    let selectedProvider;
 
     switch (provider) {
       case "google":
-        authProvider = new GoogleAuthProvider();
+        selectedProvider = googleProvider;
         break;
       case "facebook":
-        authProvider = new FacebookAuthProvider();
+        selectedProvider = facebookProvider;
         break;
       case "twitter":
-        authProvider = new TwitterAuthProvider();
+        selectedProvider = twitterProvider;
         break;
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
 
-    const result = await signInWithPopup(auth, authProvider);
+    const result = await signInWithPopup(auth, selectedProvider);
     const user = await mapFirebaseUserToUser(result.user);
+
+    // Get a fresh token with a long expiration
+    const token = await result.user.getIdToken(true);
 
     // Verify with backend
     await axios.post<AuthResponse>(
       `${API_URL}/auth/social-login`,
-      { token: user.token, provider },
+      { token, provider },
       { withCredentials: true }
     );
 
