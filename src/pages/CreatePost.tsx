@@ -1,131 +1,209 @@
-import React from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Platform } from "../types";
-import { PlatformSelector } from "../components/PlatformSelector";
-import { MediaUpload } from "../components/MediaUpload";
-import { DateTimePicker } from "../components/DateTimePicker";
-import { FilePlus } from "lucide-react"; // Importing the Plus icon
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { usePost } from "../contexts/PostContext";
+import { ThemeToggle } from "../components/ThemeToggle";
 
-const postSchema = z.object({
-  content: z
-    .string()
-    .min(1, "Content is required")
-    .max(280, "Content too long"),
-  platforms: z.array(z.string()).min(1, "Select at least one platform"),
-  scheduledFor: z.string().optional(),
-  mediaUrls: z.array(z.string()).optional(),
-});
+const PLATFORMS = [
+  {
+    id: "twitter",
+    name: "Twitter",
+    icon: "twitter",
+    color: "#1DA1F2",
+    hoverColor: "#1a91da",
+  },
+  {
+    id: "facebook",
+    name: "Facebook",
+    icon: "facebook",
+    color: "#1877F2",
+    hoverColor: "#166fe5",
+  },
+  {
+    id: "linkedin",
+    name: "LinkedIn",
+    icon: "linkedin",
+    color: "#0A66C2",
+    hoverColor: "#0959ab",
+  },
+  {
+    id: "instagram",
+    name: "Instagram",
+    icon: "instagram",
+    color: "#E4405F",
+    hoverColor: "#d63850",
+  },
+];
 
-type PostFormData = z.infer<typeof postSchema>;
+const CreatePost = () => {
+  const navigate = useNavigate();
+  const { createPost, validateContent, loading, error } = usePost();
+  const [content, setContent] = useState("");
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [scheduledFor, setScheduledFor] = useState<string>("");
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
 
-export function CreatePost() {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    watch,
-  } = useForm<PostFormData>({
-    resolver: zodResolver(postSchema),
-    defaultValues: {
-      platforms: [],
-      mediaUrls: [],
-    },
-  });
-
-  const onSubmit = (data: PostFormData) => {
-    // Handle post submission for Facebook
-    if (data.platforms.includes("facebook")) {
-      console.log("Facebook post submitted:", data);
-    }
-    console.log("Form submitted:", data);
+  const validateForPlatforms = () => {
+    const errors: Record<string, string> = {};
+    selectedPlatforms.forEach((platform) => {
+      const validation = validateContent(content, platform);
+      if (!validation.valid && validation.message) {
+        errors[platform] = validation.message;
+      }
+    });
+    return errors;
   };
 
-  const selectedPlatforms = watch("platforms");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const errors = validateForPlatforms();
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    try {
+      await createPost(
+        content,
+        selectedPlatforms,
+        scheduledFor ? new Date(scheduledFor) : undefined
+      );
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Failed to create post:", err);
+    }
+  };
+
+  const togglePlatform = (platformId: string) => {
+    setSelectedPlatforms((prev) =>
+      prev.includes(platformId)
+        ? prev.filter((p) => p !== platformId)
+        : [...prev, platformId]
+    );
+    setValidationErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[platformId];
+      return newErrors;
+    });
+  };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
-        <div className="flex items-center">
-          <FilePlus className="h-6 w-6 mr-2 mb-6" />
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
-            Create New Post
-          </h1>
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6">
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                Create Post
+              </h1>
+              <div className="flex items-center space-x-4">
+                <ThemeToggle />
+                <button
+                  onClick={() => navigate("/dashboard")}
+                  className="px-4 py-2 text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200">
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/50 border border-red-400 text-red-700 dark:text-red-200 px-4 py-3 rounded relative">
+                  {error}
+                </div>
+              )}
+
+              {/* Content Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Post Content
+                </label>
+                <div className="mt-1">
+                  <textarea
+                    rows={4}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white p-4 resize-none"
+                    placeholder="What's on your mind?"
+                  />
+                </div>
+              </div>
+
+              {/* Platform Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Select Platforms
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {PLATFORMS.map((platform) => (
+                    <button
+                      key={platform.id}
+                      type="button"
+                      onClick={() => togglePlatform(platform.id)}
+                      className={`
+                                                w-full inline-flex items-center justify-center gap-3 py-2.5 px-4 
+                                                border rounded-md shadow-sm text-sm font-medium 
+                                                transition-colors duration-200
+                                                ${
+                                                  selectedPlatforms.includes(
+                                                    platform.id
+                                                  )
+                                                    ? `bg-${platform.color} text-white hover:bg-${platform.hoverColor}`
+                                                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
+                                                }
+                                            `}>
+                      <i
+                        className={`fab fa-${platform.icon} text-lg`}
+                        style={{
+                          color: selectedPlatforms.includes(platform.id)
+                            ? "white"
+                            : platform.color,
+                        }}></i>
+                      <span>{platform.name}</span>
+                    </button>
+                  ))}
+                </div>
+                {Object.entries(validationErrors).map(([platform, error]) => (
+                  <p
+                    key={platform}
+                    className="mt-2 text-sm text-red-600 dark:text-red-400">
+                    {error}
+                  </p>
+                ))}
+              </div>
+
+              {/* Schedule Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Schedule Post (Optional)
+                </label>
+                <div className="mt-1">
+                  <input
+                    type="datetime-local"
+                    value={scheduledFor}
+                    onChange={(e) => setScheduledFor(e.target.value)}
+                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white p-2"
+                  />
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={loading || selectedPlatforms.length === 0}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-800">
+                  {loading ? "Creating..." : "Create Post"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-              Content
-            </label>
-            <div className="mt-1">
-              <textarea
-                {...register("content")}
-                rows={4}
-                className="shadow-sm block w-full sm:text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 pl-2"
-                placeholder="What's on your mind?"
-              />
-              {errors.content && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.content.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-              Platforms
-            </label>
-            <div className="mt-1">
-              <PlatformSelector
-                selected={selectedPlatforms as Platform[]}
-                onChange={(platforms) => setValue("platforms", platforms)}
-              />
-              {errors.platforms && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.platforms.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-              Media
-            </label>
-            <div className="mt-1">
-              <MediaUpload onUpload={(urls) => setValue("mediaUrls", urls)} />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-              Schedule
-            </label>
-            <div className="mt-1">
-              <DateTimePicker
-                onChange={(date) => setValue("scheduledFor", date)}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-              Save as Draft
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
-              Schedule Post
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );
-}
+};
+
+export default CreatePost;

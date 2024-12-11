@@ -4,12 +4,12 @@ The backend will be responsible for handling user authentication, managing posts
 
 Key Components and Tasks
 
-1. User Authentication ✅
+1. User Authentication ✅✅
    - Implement user authentication using Firebase Authentication or OAuth 2.0.
    - Create endpoints for user registration, login, and logout.
    - Ensure secure handling of user credentials and tokens.
 
-2. Database Structure ✅
+2. Database Structure ✅✅
    - Set up Firebase Firestore or Realtime Database to store:
      - Users Collection: Store user profiles, connected social media accounts, and preferences.
      - Posts Collection: Store drafts, scheduled posts, and timestamps.
