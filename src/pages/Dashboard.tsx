@@ -84,11 +84,11 @@ const Dashboard = () => {
 
             <div className="text-gray-600 dark:text-gray-300">
               <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
-                <div className="flex items-center mb-2">
-                  <KeyRound className="w-4 h-4 mr-2" />
-                  <p className="font-medium">Authentication Token:</p>
-                </div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="w-4 h-4" />
+                    <p className="font-medium">Authentication Token:</p>
+                  </div>
                   <button
                     onClick={copyToClipboard}
                     className={`inline-flex items-center gap-2 px-3 py-1 text-sm rounded-md transition-colors ${

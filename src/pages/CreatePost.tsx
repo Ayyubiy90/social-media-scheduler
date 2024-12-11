@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePost } from "../contexts/PostContext";
 import { ThemeToggle } from "../components/ThemeToggle";
-import { FilePlus2, FileText, Share2, CalendarClock } from "lucide-react";
+import { FilePlus2, FileText, Share2, CalendarClock, X } from "lucide-react";
 
 const PLATFORMS = [
   {
@@ -124,7 +124,8 @@ const CreatePost = () => {
                 <ThemeToggle />
                 <button
                   onClick={() => navigate("/dashboard")}
-                  className="px-4 py-2 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200">
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200">
+                  <X className="w-4 h-4" />
                   Cancel
                 </button>
               </div>
