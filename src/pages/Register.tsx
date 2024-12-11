@@ -1,43 +1,58 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import SocialLoginButtons from "../components/SocialLoginButtons";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { UserPlus, Mail, Lock } from "lucide-react";
 
-interface AuthError {
-  message: string;
-}
-
 const Register = () => {
   const navigate = useNavigate();
-  const { register } = useUser();
+  const {
+    register,
+    error: authError,
+    loading: authLoading,
+    clearError,
+  } = useUser();
   const [credentials, setCredentials] = useState({
     email: "",
     password: "",
     confirmPassword: "",
   });
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [validationError, setValidationError] = useState("");
+
+  // Clear any existing auth errors when component mounts or unmounts
+  useEffect(() => {
+    clearError();
+    return () => clearError();
+  }, [clearError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationError("");
+
     if (credentials.password !== credentials.confirmPassword) {
-      setError("Passwords do not match");
+      setValidationError("Passwords do not match");
       return;
     }
-    setError("");
-    setIsLoading(true);
+
+    if (credentials.password.length < 6) {
+      setValidationError("Password must be at least 6 characters long");
+      return;
+    }
+
     try {
-      await register(credentials);
+      await register({
+        email: credentials.email,
+        password: credentials.password,
+      });
       navigate("/dashboard");
     } catch (error) {
-      const authError = error as AuthError;
-      setError(authError?.message || "Failed to create account");
-    } finally {
-      setIsLoading(false);
+      // Error is handled by UserContext
+      console.error("Registration error:", error);
     }
   };
+
+  const displayError = validationError || authError;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-gray-100 dark:bg-gray-900 relative">
@@ -62,11 +77,11 @@ const Register = () => {
 
         <div className="mt-8 bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
+            {displayError && (
               <div
                 className="bg-red-50 dark:bg-red-900/50 border border-red-400 text-red-700 dark:text-red-200 px-4 py-3 rounded relative"
                 role="alert">
-                <span className="block sm:inline">{error}</span>
+                <span className="block sm:inline">{displayError}</span>
               </div>
             )}
 
@@ -145,15 +160,17 @@ const Register = () => {
             <div>
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={authLoading}
                 className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-800">
                 <UserPlus className="w-4 h-4" />
-                {isLoading ? "Creating account..." : "Create account"}
+                {authLoading ? "Creating account..." : "Create account"}
               </button>
             </div>
           </form>
 
-          <SocialLoginButtons />
+          <div className="mt-6">
+            <SocialLoginButtons />
+          </div>
         </div>
       </div>
     </div>

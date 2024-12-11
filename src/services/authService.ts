@@ -1,8 +1,23 @@
 import axios from "axios";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+  TwitterAuthProvider,
+  signOut,
+  onAuthStateChanged,
+  User as FirebaseUser,
+} from "firebase/auth";
 
 export interface User {
   token: string;
   uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
 }
 
 interface Credentials {
@@ -34,29 +49,38 @@ const handleApiError = (error: unknown): never => {
   throw new Error("An unexpected error occurred");
 };
 
+const mapFirebaseUserToUser = async (
+  firebaseUser: FirebaseUser
+): Promise<User> => {
+  const token = await firebaseUser.getIdToken();
+  return {
+    token,
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    displayName: firebaseUser.displayName,
+    photoURL: firebaseUser.photoURL,
+  };
+};
+
 export const loginUser = async (credentials: Credentials): Promise<User> => {
   try {
-    const response = await axios.post<AuthResponse>(
-      `${API_URL}/auth/login`,
-      credentials,
-      {
-        withCredentials: true, // Important for handling cookies
-      }
+    const auth = getAuth();
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      credentials.email,
+      credentials.password
     );
-    const userData = response.data;
 
-    if (!userData.token || !userData.uid) {
-      throw new Error("Invalid response from server: missing token or uid");
-    }
+    const user = await mapFirebaseUserToUser(userCredential.user);
 
-    // Store the token in localStorage for API requests
-    localStorage.setItem("token", userData.token);
-    localStorage.setItem("uid", userData.uid);
+    // Verify with backend
+    await axios.post<AuthResponse>(
+      `${API_URL}/auth/login`,
+      { token: user.token },
+      { withCredentials: true }
+    );
 
-    return {
-      token: userData.token,
-      uid: userData.uid,
-    };
+    return user;
   } catch (error) {
     throw handleApiError(error);
   }
@@ -64,27 +88,58 @@ export const loginUser = async (credentials: Credentials): Promise<User> => {
 
 export const registerUser = async (userData: Credentials): Promise<User> => {
   try {
-    const response = await axios.post<AuthResponse>(
-      `${API_URL}/auth/register`,
-      userData,
-      {
-        withCredentials: true, // Important for handling cookies
-      }
+    const auth = getAuth();
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      userData.email,
+      userData.password
     );
-    const newUser = response.data;
 
-    if (!newUser.token || !newUser.uid) {
-      throw new Error("Invalid response from server: missing token or uid");
+    const user = await mapFirebaseUserToUser(userCredential.user);
+
+    // Register with backend
+    await axios.post<AuthResponse>(
+      `${API_URL}/auth/register`,
+      { token: user.token },
+      { withCredentials: true }
+    );
+
+    return user;
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+
+export const socialLogin = async (provider: string): Promise<User> => {
+  try {
+    const auth = getAuth();
+    let authProvider;
+
+    switch (provider) {
+      case "google":
+        authProvider = new GoogleAuthProvider();
+        break;
+      case "facebook":
+        authProvider = new FacebookAuthProvider();
+        break;
+      case "twitter":
+        authProvider = new TwitterAuthProvider();
+        break;
+      default:
+        throw new Error(`Unsupported provider: ${provider}`);
     }
 
-    // Store the token in localStorage for API requests
-    localStorage.setItem("token", newUser.token);
-    localStorage.setItem("uid", newUser.uid);
+    const result = await signInWithPopup(auth, authProvider);
+    const user = await mapFirebaseUserToUser(result.user);
 
-    return {
-      token: newUser.token,
-      uid: newUser.uid,
-    };
+    // Verify with backend
+    await axios.post<AuthResponse>(
+      `${API_URL}/auth/social-login`,
+      { token: user.token, provider },
+      { withCredentials: true }
+    );
+
+    return user;
   } catch (error) {
     throw handleApiError(error);
   }
@@ -92,7 +147,9 @@ export const registerUser = async (userData: Credentials): Promise<User> => {
 
 export const logoutUser = async (): Promise<void> => {
   try {
-    const token = localStorage.getItem("token");
+    const auth = getAuth();
+    const token = await auth.currentUser?.getIdToken();
+
     if (token) {
       await axios.post(`${API_URL}/auth/logout`, null, {
         withCredentials: true,
@@ -101,14 +158,26 @@ export const logoutUser = async (): Promise<void> => {
         },
       });
     }
+
+    await signOut(auth);
   } catch (error) {
     console.error("Logout error:", error);
-  } finally {
-    // Clear local storage regardless of server response
-    localStorage.removeItem("token");
-    localStorage.removeItem("uid");
   }
 };
 
-// Configure axios defaults for all requests
-axios.defaults.withCredentials = true; // Enable sending cookies with all requests
+export const subscribeToAuthChanges = (
+  callback: (user: User | null) => void
+): (() => void) => {
+  const auth = getAuth();
+  return onAuthStateChanged(auth, async (firebaseUser) => {
+    if (firebaseUser) {
+      const user = await mapFirebaseUserToUser(firebaseUser);
+      callback(user);
+    } else {
+      callback(null);
+    }
+  });
+};
+
+// Configure axios defaults
+axios.defaults.withCredentials = true;

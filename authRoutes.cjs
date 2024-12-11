@@ -42,16 +42,16 @@ router.post("/register", async (req, res) => {
 
 // User Login
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { token } = req.body; // Expecting the ID token from the client
   try {
-    const userRecord = await getAuth().getUserByEmail(email);
+    // Verify the ID token
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const uid = decodedToken.uid;
 
     // Generate a session cookie
-    const sessionCookie = await admin
-      .auth()
-      .createSessionCookie(userRecord.uid, {
-        expiresIn: 60 * 60 * 24 * 5 * 1000,
-      }); // 5 days
+    const sessionCookie = await admin.auth().createSessionCookie(uid, {
+      expiresIn: 60 * 60 * 24 * 5 * 1000,
+    }); // 5 days
 
     res.cookie("session", sessionCookie, {
       maxAge: 5 * 24 * 60 * 60 * 1000,
@@ -59,10 +59,11 @@ router.post("/login", async (req, res) => {
       secure: true,
     });
     res.status(200).send({
-      uid: userRecord.uid,
+      uid: uid,
       message: "Login successful",
     });
   } catch (error) {
+    console.error("Login error:", error);
     res.status(400).send({ error: error.message });
   }
 });
@@ -73,14 +74,13 @@ router.post("/logout", verifyToken, async (req, res) => {
   try {
     await getAuth().revokeRefreshTokens(uid);
     res.clearCookie("session");
-    res.status(200).send({ message: "User logged out successfully" });
+    res.status(200).send({ message: "User  logged out successfully" });
   } catch (error) {
     res.status(500).send({ error: "Failed to logout user" });
   }
 });
 
 // OAuth Routes
-// ... (rest of the OAuth routes remain unchanged)
 router.get(
   "/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -200,7 +200,7 @@ router.get("/connected-accounts", verifyToken, async (req, res) => {
       .doc(req.user.uid)
       .get();
     if (!userRef.exists) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: "User  not found" });
     }
 
     const userData = userRef.data();
@@ -235,7 +235,7 @@ router.delete("/disconnect/:platform", verifyToken, async (req, res) => {
     update[`${platform}RefreshToken`] = admin.firestore.FieldValue.delete();
 
     await userRef.update(update);
-    res.json({ message: `Successfully disconnected ${platform} account` });
+    res.json({ message: `Successfully disconnected ${platform} account ` });
   } catch (error) {
     console.error(`Error disconnecting ${platform} account:`, error);
     res.status(500).json({ error: `Failed to disconnect ${platform} account` });

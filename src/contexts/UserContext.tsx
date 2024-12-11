@@ -9,15 +9,20 @@ import {
   loginUser,
   registerUser,
   logoutUser,
+  subscribeToAuthChanges,
+  socialLogin,
   User,
 } from "../services/authService";
 
 interface UserContextType {
   user: User | null;
   loading: boolean;
+  error: string | null;
   login: (credentials: { email: string; password: string }) => Promise<void>;
   register: (userData: { email: string; password: string }) => Promise<void>;
-  logout: () => void;
+  socialLogin: (provider: string) => Promise<void>;
+  logout: () => Promise<void>;
+  clearError: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -25,47 +30,94 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const uid = localStorage.getItem("uid");
-    if (token && uid) {
-      setUser({ token, uid });
-    }
-    setLoading(false);
+    // Subscribe to Firebase auth state changes
+    const unsubscribe = subscribeToAuthChanges((user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
+
+  const handleError = (error: unknown) => {
+    if (error instanceof Error) {
+      setError(error.message);
+    } else {
+      setError("An unexpected error occurred");
+    }
+    throw error;
+  };
+
+  const clearError = () => setError(null);
 
   const login = async (credentials: { email: string; password: string }) => {
     try {
+      clearError();
+      setLoading(true);
       const userData = await loginUser(credentials);
       setUser(userData);
-      localStorage.setItem("token", userData.token);
-      localStorage.setItem("uid", userData.uid);
     } catch (error) {
-      console.error("Login error:", error);
-      throw error;
+      handleError(error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const register = async (userData: { email: string; password: string }) => {
     try {
+      clearError();
+      setLoading(true);
       const newUser = await registerUser(userData);
       setUser(newUser);
-      localStorage.setItem("token", newUser.token);
-      localStorage.setItem("uid", newUser.uid);
     } catch (error) {
-      console.error("Registration error:", error);
-      throw error;
+      handleError(error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = () => {
-    logoutUser();
-    setUser(null);
+  const handleSocialLogin = async (provider: string) => {
+    try {
+      clearError();
+      setLoading(true);
+      const userData = await socialLogin(provider);
+      setUser(userData);
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      clearError();
+      setLoading(true);
+      await logoutUser();
+      setUser(null);
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <UserContext.Provider value={{ user, loading, login, register, logout }}>
+    <UserContext.Provider
+      value={{
+        user,
+        loading,
+        error,
+        login,
+        register,
+        socialLogin: handleSocialLogin,
+        logout,
+        clearError,
+      }}>
       {children}
     </UserContext.Provider>
   );

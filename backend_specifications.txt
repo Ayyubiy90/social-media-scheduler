@@ -34,7 +34,7 @@ Key Components and Tasks
    - Implement a notification system to remind users before a scheduled post is published.
    - Create endpoints to manage notification settings and schedules.
 
-6. Integration with Social Media APIs ⚠️
+6. Integration with Social Media APIs ✅✅
    - Integrate with third-party social media APIs (e.g., Twitter, Facebook, Instagram, LinkedIn) for publishing posts:
      - Create endpoints to handle the connection and disconnection of social media accounts.
      - Implement functionality to publish posts to connected accounts.

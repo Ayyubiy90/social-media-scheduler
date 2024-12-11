@@ -1,8 +1,15 @@
 import React from "react";
+import { useUser } from "../contexts/UserContext";
 
 const SocialLoginButtons = () => {
-  const handleSocialLogin = (provider: string) => {
-    window.location.href = `http://localhost:5000/auth/${provider}`;
+  const { socialLogin, loading } = useUser();
+
+  const handleSocialLogin = async (provider: string) => {
+    try {
+      await socialLogin(provider);
+    } catch (error) {
+      console.error(`${provider} login error:`, error);
+    }
   };
 
   return (
@@ -21,7 +28,8 @@ const SocialLoginButtons = () => {
       <div className="mt-6 grid grid-cols-2 sm:grid-cols-2 gap-2">
         <button
           onClick={() => handleSocialLogin("google")}
-          className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4285F4] dark:focus:ring-offset-gray-800 transition-colors duration-200">
+          disabled={loading}
+          className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4285F4] dark:focus:ring-offset-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
           <svg
             className="w-4 h-4 text-[#4285F4]"
             fill="currentColor"
@@ -33,7 +41,8 @@ const SocialLoginButtons = () => {
 
         <button
           onClick={() => handleSocialLogin("facebook")}
-          className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1877F2] dark:focus:ring-offset-gray-800 transition-colors duration-200">
+          disabled={loading}
+          className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1877F2] dark:focus:ring-offset-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
           <svg
             className="w-4 h-4 text-[#1877F2]"
             fill="currentColor"
@@ -45,7 +54,8 @@ const SocialLoginButtons = () => {
 
         <button
           onClick={() => handleSocialLogin("twitter")}
-          className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1DA1F2] dark:focus:ring-offset-gray-800 transition-colors duration-200">
+          disabled={loading}
+          className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1DA1F2] dark:focus:ring-offset-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
           <svg
             className="w-4 h-4 text-[#1DA1F2]"
             fill="currentColor"
@@ -57,7 +67,8 @@ const SocialLoginButtons = () => {
 
         <button
           onClick={() => handleSocialLogin("linkedin")}
-          className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0A66C2] dark:focus:ring-offset-gray-800 transition-colors duration-200">
+          disabled={loading}
+          className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0A66C2] dark:focus:ring-offset-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
           <svg
             className="w-4 h-4 text-[#0A66C2]"
             fill="currentColor"
