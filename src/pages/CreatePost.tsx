@@ -4,34 +4,10 @@ import { usePost } from "../contexts/PostContext";
 import { ThemeToggle } from "../components/ThemeToggle";
 
 const PLATFORMS = [
-  {
-    id: "twitter",
-    name: "Twitter",
-    icon: "twitter",
-    color: "#1DA1F2",
-    hoverColor: "#1a91da",
-  },
-  {
-    id: "facebook",
-    name: "Facebook",
-    icon: "facebook",
-    color: "#1877F2",
-    hoverColor: "#166fe5",
-  },
-  {
-    id: "linkedin",
-    name: "LinkedIn",
-    icon: "linkedin",
-    color: "#0A66C2",
-    hoverColor: "#0959ab",
-  },
-  {
-    id: "instagram",
-    name: "Instagram",
-    icon: "instagram",
-    color: "#E4405F",
-    hoverColor: "#d63850",
-  },
+  { id: "twitter", name: "Twitter", icon: "twitter" },
+  { id: "facebook", name: "Facebook", icon: "facebook" },
+  { id: "linkedin", name: "LinkedIn", icon: "linkedin" },
+  { id: "instagram", name: "Instagram", icon: "instagram" },
 ];
 
 const CreatePost = () => {
@@ -102,7 +78,7 @@ const CreatePost = () => {
                 <ThemeToggle />
                 <button
                   onClick={() => navigate("/dashboard")}
-                  className="px-4 py-2 text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200">
+                  className="px-4 py-2 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200">
                   Cancel
                 </button>
               </div>
@@ -136,32 +112,34 @@ const CreatePost = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Select Platforms
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {PLATFORMS.map((platform) => (
                     <button
                       key={platform.id}
                       type="button"
                       onClick={() => togglePlatform(platform.id)}
                       className={`
-                                                w-full inline-flex items-center justify-center gap-3 py-2.5 px-4 
-                                                border rounded-md shadow-sm text-sm font-medium 
-                                                transition-colors duration-200
+                                                inline-flex items-center justify-center px-4 py-2.5
+                                                border rounded-md text-sm font-medium transition-all duration-200
                                                 ${
                                                   selectedPlatforms.includes(
                                                     platform.id
                                                   )
-                                                    ? `bg-${platform.color} text-white hover:bg-${platform.hoverColor}`
-                                                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
+                                                    ? "bg-gray-100 text-gray-900 border-gray-300 dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                                                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
                                                 }
                                             `}>
                       <i
-                        className={`fab fa-${platform.icon} text-lg`}
-                        style={{
-                          color: selectedPlatforms.includes(platform.id)
-                            ? "white"
-                            : platform.color,
-                        }}></i>
-                      <span>{platform.name}</span>
+                        className={`fab fa-${platform.icon} mr-2 ${
+                          platform.id === "facebook"
+                            ? "text-[#1877F2]"
+                            : platform.id === "twitter"
+                            ? "text-[#1DA1F2]"
+                            : platform.id === "linkedin"
+                            ? "text-[#0A66C2]"
+                            : "text-[#E4405F]"
+                        }`}></i>
+                      {platform.name}
                     </button>
                   ))}
                 </div>
