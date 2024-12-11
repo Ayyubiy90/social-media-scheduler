@@ -9,11 +9,8 @@ import {
   loginUser,
   registerUser,
   logoutUser,
-} from "../services/notificationService.ts";
-
-interface User {
-  token: string;
-}
+  User
+} from "../services/authService";
 
 interface UserContextType {
   user: User | null;
@@ -31,28 +28,40 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      setUser({ token });
+    const uid = localStorage.getItem("uid");
+    if (token && uid) {
+      setUser({ token, uid });
     }
     setLoading(false);
   }, []);
 
   const login = async (credentials: { email: string; password: string }) => {
-    const userData = await loginUser(credentials);
-    setUser(userData);
-    localStorage.setItem("token", userData.token);
+    try {
+      const userData = await loginUser(credentials);
+      setUser(userData);
+      localStorage.setItem("token", userData.token);
+      localStorage.setItem("uid", userData.uid);
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const register = async (userData: { email: string; password: string }) => {
-    const newUser = await registerUser(userData);
-    setUser(newUser);
-    localStorage.setItem("token", newUser.token);
+    try {
+      const newUser = await registerUser(userData);
+      setUser(newUser);
+      localStorage.setItem("token", newUser.token);
+      localStorage.setItem("uid", newUser.uid);
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
   const logout = () => {
     logoutUser();
     setUser(null);
-    localStorage.removeItem("token");
   };
 
   return (
