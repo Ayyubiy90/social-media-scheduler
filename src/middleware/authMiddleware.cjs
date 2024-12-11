@@ -16,19 +16,12 @@ const verifyToken = async (req, res, next) => {
       return next();
     }
 
-    // Get user from token
-    const decodedToken = await admin.auth().verifySessionCookie(token, true);
+    // Verify the ID token
+    const decodedToken = await admin.auth().verifyIdToken(token);
 
-    // If session cookie verification fails, try custom token
-    if (!decodedToken) {
-      const userRecord = await admin.auth().getUser(token.split(".")[0]); // Get UID from token
-      if (!userRecord) {
-        throw new Error("Invalid token");
-      }
-      decodedToken = {
-        uid: userRecord.uid,
-        email: userRecord.email,
-      };
+    // Check token expiration
+    if (decodedToken.exp && decodedToken.exp < Date.now() / 1000) {
+      return res.status(401).json({ error: "Token has expired" });
     }
 
     req.user = {
@@ -38,21 +31,6 @@ const verifyToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("Error verifying token:", error);
-
-    // Try to get user directly if token verification fails
-    try {
-      const userRecord = await admin.auth().getUser(token.split(".")[0]);
-      if (userRecord) {
-        req.user = {
-          uid: userRecord.uid,
-          email: userRecord.email,
-        };
-        return next();
-      }
-    } catch (fallbackError) {
-      console.error("Fallback authentication failed:", fallbackError);
-    }
-
     res.status(401).json({ error: "Invalid token" });
   }
 };

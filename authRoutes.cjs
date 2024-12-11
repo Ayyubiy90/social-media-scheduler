@@ -19,20 +19,12 @@ router.post("/register", async (req, res) => {
       password,
     });
 
-    // Create a session cookie
-    const sessionCookie = await admin
-      .auth()
-      .createSessionCookie(userRecord.uid, {
-        expiresIn: 60 * 60 * 24 * 5 * 1000,
-      }); // 5 days
+    // Generate a custom token for the user
+    const token = await admin.auth().createCustomToken(userRecord.uid);
 
-    res.cookie("session", sessionCookie, {
-      maxAge: 5 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      secure: true,
-    });
     res.status(201).send({
       uid: userRecord.uid,
+      token,
       message: "Registration successful",
     });
   } catch (error) {
@@ -46,20 +38,12 @@ router.post("/login", async (req, res) => {
   try {
     const userRecord = await getAuth().getUserByEmail(email);
 
-    // Generate a session cookie
-    const sessionCookie = await admin
-      .auth()
-      .createSessionCookie(userRecord.uid, {
-        expiresIn: 60 * 60 * 24 * 5 * 1000,
-      }); // 5 days
+    // Generate a custom token for the user
+    const token = await admin.auth().createCustomToken(userRecord.uid);
 
-    res.cookie("session", sessionCookie, {
-      maxAge: 5 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      secure: true,
-    });
     res.status(200).send({
       uid: userRecord.uid,
+      token,
       message: "Login successful",
     });
   } catch (error) {
