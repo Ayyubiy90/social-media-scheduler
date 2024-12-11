@@ -80,8 +80,7 @@ router.post("/logout", verifyToken, async (req, res) => {
 });
 
 // OAuth Routes
-
-// Google OAuth
+// ... (rest of the OAuth routes remain unchanged)
 router.get(
   "/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -192,7 +191,6 @@ router.get(
 );
 
 // Social Media Account Management
-
 // Get connected social media accounts
 router.get("/connected-accounts", verifyToken, async (req, res) => {
   try {
