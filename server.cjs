@@ -9,11 +9,9 @@ const {
   createPostJob,
   cancelPostJob,
   reschedulePostJob,
-  createNotificationJob,
-  cancelNotificationJob,
-  rescheduleNotificationJob,
 } = require("./jobQueue.cjs");
 const authRoutes = require("./authRoutes.cjs");
+const notificationRoutes = require("./notificationRoutes.cjs");
 
 const app = express();
 const port = 5000;
@@ -28,9 +26,21 @@ console.log(
   !!process.env.GOOGLE_CLIENT_ID
 );
 
-// Middleware
-app.use(cors());
+// CORS configuration
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Your frontend URL
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["set-cookie"],
+  })
+);
+
+// Body parser middleware
 app.use(express.json());
+
+// Session middleware
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "default-secret-key",
@@ -38,7 +48,9 @@ app.use(
     saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   })
 );
@@ -47,10 +59,7 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Authentication routes
-app.use("/auth", authRoutes);
-
-// Post management endpoints
+// Route Middleware
 const {
   verifyToken,
   verifySession,
@@ -59,7 +68,12 @@ const {
   validatePostMiddleware,
 } = require("./src/middleware/postValidation.cjs");
 
-app.post("/schedule", (req, res) => {
+// Routes
+app.use("/auth", authRoutes);
+app.use("/notifications", notificationRoutes);
+
+// Post management endpoints
+app.post("/schedule", verifyToken, verifySession, (req, res) => {
   const { platform, content, scheduledTime } = req.body;
   createPostJob(platform, content, scheduledTime)
     .then((jobId) => res.json({ jobId }))
@@ -198,7 +212,7 @@ app.delete("/posts/:postId", verifyToken, verifySession, async (req, res) => {
   }
 });
 
-app.post("/reschedule/:jobId", (req, res) => {
+app.post("/reschedule/:jobId", verifyToken, verifySession, (req, res) => {
   const { jobId } = req.params;
   const { scheduledTime } = req.body;
   reschedulePostJob(jobId, scheduledTime)
@@ -208,7 +222,7 @@ app.post("/reschedule/:jobId", (req, res) => {
     );
 });
 
-app.delete("/cancel/:jobId", (req, res) => {
+app.delete("/cancel/:jobId", verifyToken, verifySession, (req, res) => {
   const { jobId } = req.params;
   cancelPostJob(jobId)
     .then(() => res.json({ message: "Post canceled successfully." }))
@@ -217,82 +231,9 @@ app.delete("/cancel/:jobId", (req, res) => {
     );
 });
 
-// Notification endpoints
-app.post("/notifications", verifyToken, verifySession, async (req, res) => {
-  const { userId, postId, scheduledTime, message } = req.body;
-  try {
-    const job = await createNotificationJob(
-      userId,
-      postId,
-      scheduledTime,
-      message
-    );
-    res.json({
-      message: "Notification created successfully.",
-      notificationId: job.id,
-    });
-  } catch (error) {
-    console.error("Error creating notification:", error);
-    res.status(500).json({ error: "Failed to create notification." });
-  }
-});
-
-app.get("/notifications", verifyToken, verifySession, async (req, res) => {
-  const { uid } = req.user;
-  try {
-    const notificationsSnapshot = await db
-      .collection("notifications")
-      .where("userId", "==", uid)
-      .get();
-
-    const notifications = notificationsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    res.json(notifications);
-  } catch (error) {
-    console.error("Error retrieving notifications:", error);
-    res.status(500).json({ error: "Failed to retrieve notifications." });
-  }
-});
-
-app.put(
-  "/notifications/:notifId",
-  verifyToken,
-  verifySession,
-  async (req, res) => {
-    const { notifId } = req.params;
-    const { scheduledTime } = req.body;
-    try {
-      await rescheduleNotificationJob(notifId, scheduledTime);
-      res.json({ message: "Notification updated successfully." });
-    } catch (error) {
-      console.error("Error updating notification:", error);
-      res.status(500).json({ error: "Failed to update notification." });
-    }
-  }
-);
-
-app.delete(
-  "/notifications/:notifId",
-  verifyToken,
-  verifySession,
-  async (req, res) => {
-    const { notifId } = req.params;
-    try {
-      await cancelNotificationJob(notifId);
-      res.json({ message: "Notification deleted successfully." });
-    } catch (error) {
-      console.error("Error deleting notification:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Failed to delete notification." });
-    }
-  }
-);
-
 const setupCollections = require("./dbSetup.cjs");
 
 app.listen(port, async () => {
   await setupCollections();
+  console.log(`Server running on port ${port}`);
 });

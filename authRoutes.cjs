@@ -18,7 +18,18 @@ router.post("/register", async (req, res) => {
       email,
       password,
     });
-    res.status(201).send({ uid: userRecord.uid });
+
+    // Create a session cookie that will be used to get an ID token
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+    const sessionCookie = await admin
+      .auth()
+      .createSessionCookie(userRecord.uid, { expiresIn });
+
+    res.status(201).send({
+      uid: userRecord.uid,
+      token: sessionCookie,
+      message: "Registration successful",
+    });
   } catch (error) {
     res.status(400).send({ error: error.message });
   }
@@ -30,12 +41,18 @@ router.post("/login", async (req, res) => {
   try {
     const userRecord = await getAuth().getUserByEmail(email);
 
-    // Generate a custom token for the user
-    const token = await admin.auth().createCustomToken(userRecord.uid);
+    // Generate an ID token for the user
+    const idToken = await admin.auth().createCustomToken(userRecord.uid);
+    const userCredential = await admin.auth().verifyCustomToken(idToken);
+    const finalToken = await admin
+      .auth()
+      .createSessionCookie(userCredential.uid, {
+        expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
+      });
 
     res.status(200).send({
       uid: userRecord.uid,
-      token,
+      token: finalToken,
       message: "Login successful",
     });
   } catch (error) {
@@ -48,6 +65,7 @@ router.post("/logout", verifyToken, async (req, res) => {
   const { uid } = req.user;
   try {
     await getAuth().revokeRefreshTokens(uid);
+    res.clearCookie("session");
     res.status(200).send({ message: "User logged out successfully" });
   } catch (error) {
     res.status(500).send({ error: "Failed to logout user" });
@@ -65,8 +83,25 @@ router.get(
 router.get(
   "/google/callback",
   passport.authenticate("google", { failureRedirect: "/login" }),
-  (req, res) => {
-    res.redirect("/dashboard");
+  async (req, res) => {
+    try {
+      const idToken = await admin.auth().createCustomToken(req.user.uid);
+      const userCredential = await admin.auth().verifyCustomToken(idToken);
+      const sessionCookie = await admin
+        .auth()
+        .createSessionCookie(userCredential.uid, {
+          expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
+        });
+      res.cookie("session", sessionCookie, {
+        maxAge: 5 * 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        secure: true,
+      });
+      res.redirect("/dashboard");
+    } catch (error) {
+      console.error("Error creating session:", error);
+      res.redirect("/login");
+    }
   }
 );
 
@@ -79,8 +114,25 @@ router.get(
 router.get(
   "/facebook/callback",
   passport.authenticate("facebook", { failureRedirect: "/login" }),
-  (req, res) => {
-    res.redirect("/dashboard");
+  async (req, res) => {
+    try {
+      const idToken = await admin.auth().createCustomToken(req.user.uid);
+      const userCredential = await admin.auth().verifyCustomToken(idToken);
+      const sessionCookie = await admin
+        .auth()
+        .createSessionCookie(userCredential.uid, {
+          expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
+        });
+      res.cookie("session", sessionCookie, {
+        maxAge: 5 * 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        secure: true,
+      });
+      res.redirect("/dashboard");
+    } catch (error) {
+      console.error("Error creating session:", error);
+      res.redirect("/login");
+    }
   }
 );
 
@@ -90,8 +142,25 @@ router.get("/twitter", passport.authenticate("twitter"));
 router.get(
   "/twitter/callback",
   passport.authenticate("twitter", { failureRedirect: "/login" }),
-  (req, res) => {
-    res.redirect("/dashboard");
+  async (req, res) => {
+    try {
+      const idToken = await admin.auth().createCustomToken(req.user.uid);
+      const userCredential = await admin.auth().verifyCustomToken(idToken);
+      const sessionCookie = await admin
+        .auth()
+        .createSessionCookie(userCredential.uid, {
+          expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
+        });
+      res.cookie("session", sessionCookie, {
+        maxAge: 5 * 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        secure: true,
+      });
+      res.redirect("/dashboard");
+    } catch (error) {
+      console.error("Error creating session:", error);
+      res.redirect("/login");
+    }
   }
 );
 
@@ -101,8 +170,25 @@ router.get("/linkedin", passport.authenticate("linkedin"));
 router.get(
   "/linkedin/callback",
   passport.authenticate("linkedin", { failureRedirect: "/login" }),
-  (req, res) => {
-    res.redirect("/dashboard");
+  async (req, res) => {
+    try {
+      const idToken = await admin.auth().createCustomToken(req.user.uid);
+      const userCredential = await admin.auth().verifyCustomToken(idToken);
+      const sessionCookie = await admin
+        .auth()
+        .createSessionCookie(userCredential.uid, {
+          expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
+        });
+      res.cookie("session", sessionCookie, {
+        maxAge: 5 * 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        secure: true,
+      });
+      res.redirect("/dashboard");
+    } catch (error) {
+      console.error("Error creating session:", error);
+      res.redirect("/login");
+    }
   }
 );
 

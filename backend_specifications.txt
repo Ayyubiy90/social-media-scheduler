@@ -30,7 +30,7 @@ Key Components and Tasks
      - Ensure tasks are resilient, with retry mechanisms for failed jobs.
    - Implement endpoints to manage scheduled posts (e.g., rescheduling, canceling).
 
-5. Notifications ❌
+5. Notifications ❌ (Loading........)
    - Implement a notification system to remind users before a scheduled post is published.
    - Create endpoints to manage notification settings and schedules.
 
