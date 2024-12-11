@@ -5,8 +5,10 @@ import React, {
   useCallback,
   ReactNode,
 } from "react";
+import { useUser } from "./UserContext";
 import { Post } from "../types/database";
 import { postService } from "../services/postService";
+import { schedulingService } from "../services/schedulingService";
 
 interface PostContextType {
   posts: Post[];
@@ -26,8 +28,13 @@ interface PostContextType {
     platforms: string[]
   ) => Promise<Post>;
   deletePost: (postId: string) => Promise<void>;
-  schedulePost: (postId: string, scheduledFor: Date) => Promise<Post>;
-  cancelScheduledPost: (postId: string) => Promise<Post>;
+  schedulePost: (post: Post, scheduledTime: Date) => Promise<void>;
+  cancelScheduledPost: (postId: string, jobId: string) => Promise<void>;
+  reschedulePost: (
+    postId: string,
+    jobId: string,
+    newScheduledTime: Date
+  ) => Promise<void>;
   validateContent: (
     content: string,
     platform: string
@@ -37,22 +44,24 @@ interface PostContextType {
 const PostContext = createContext<PostContextType | undefined>(undefined);
 
 export function PostProvider({ children }: { children: ReactNode }) {
+  const { user } = useUser();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchPosts = useCallback(async () => {
+    if (!user?.uid) return;
     setLoading(true);
     try {
-      const fetchedPosts = await postService.getPosts();
-      setPosts(fetchedPosts);
+      const allPosts = await postService.getPosts();
+      setPosts(allPosts);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch posts");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.uid]);
 
   const createPost = async (
     content: string,
@@ -67,6 +76,11 @@ export function PostProvider({ children }: { children: ReactNode }) {
         scheduledFor,
         draft: !scheduledFor,
       });
+
+      if (scheduledFor) {
+        await schedulingService.schedulePost(newPost, scheduledFor);
+      }
+
       setPosts((prev) => [newPost, ...prev]);
       setError(null);
       return newPost;
@@ -123,20 +137,21 @@ export function PostProvider({ children }: { children: ReactNode }) {
   };
 
   const schedulePost = async (
-    postId: string,
-    scheduledFor: Date
-  ): Promise<Post> => {
+    post: Post,
+    scheduledTime: Date
+  ): Promise<void> => {
     setLoading(true);
     try {
-      const scheduledPost = await postService.schedulePost(
-        postId,
-        scheduledFor
-      );
+      await schedulingService.schedulePost(post, scheduledTime);
+      await schedulingService.updatePostStatus(post.id, "scheduled");
       setPosts((prev) =>
-        prev.map((post) => (post.id === postId ? scheduledPost : post))
+        prev.map((p) =>
+          p.id === post.id
+            ? { ...p, status: "scheduled", scheduledFor: scheduledTime }
+            : p
+        )
       );
       setError(null);
-      return scheduledPost;
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to schedule post";
@@ -147,18 +162,49 @@ export function PostProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const cancelScheduledPost = async (postId: string): Promise<Post> => {
+  const cancelScheduledPost = async (
+    postId: string,
+    jobId: string
+  ): Promise<void> => {
     setLoading(true);
     try {
-      const cancelledPost = await postService.cancelScheduledPost(postId);
+      await schedulingService.cancelScheduledPost(postId, jobId);
+      await schedulingService.updatePostStatus(postId, "draft");
       setPosts((prev) =>
-        prev.map((post) => (post.id === postId ? cancelledPost : post))
+        prev.map((p) =>
+          p.id === postId
+            ? { ...p, status: "draft", scheduledFor: undefined }
+            : p
+        )
       );
       setError(null);
-      return cancelledPost;
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to cancel scheduled post";
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reschedulePost = async (
+    postId: string,
+    jobId: string,
+    newScheduledTime: Date
+  ): Promise<void> => {
+    setLoading(true);
+    try {
+      await schedulingService.reschedulePost(postId, jobId, newScheduledTime);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, scheduledFor: newScheduledTime } : p
+        )
+      );
+      setError(null);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to reschedule post";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -188,6 +234,7 @@ export function PostProvider({ children }: { children: ReactNode }) {
         deletePost,
         schedulePost,
         cancelScheduledPost,
+        reschedulePost,
         validateContent,
       }}>
       {children}
