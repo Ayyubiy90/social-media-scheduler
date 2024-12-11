@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePost } from "../contexts/PostContext";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { FilePlus2, FileText, Share2, CalendarClock } from "lucide-react";
 
 const PLATFORMS = [
   {
@@ -115,7 +116,8 @@ const CreatePost = () => {
         <div className="px-4 py-6 sm:px-0">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <FilePlus2 className="w-6 h-6" />
                 Create Post
               </h1>
               <div className="flex items-center space-x-4">
@@ -137,7 +139,8 @@ const CreatePost = () => {
 
               {/* Content Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
                   Post Content
                 </label>
                 <div className="mt-1">
@@ -153,7 +156,8 @@ const CreatePost = () => {
 
               {/* Platform Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-2">
+                  <Share2 className="w-4 h-4" />
                   Select Platforms
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -190,7 +194,8 @@ const CreatePost = () => {
 
               {/* Schedule Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <CalendarClock className="w-4 h-4" />
                   Schedule Post (Optional)
                 </label>
                 <div className="mt-1">
@@ -208,7 +213,8 @@ const CreatePost = () => {
                 <button
                   type="submit"
                   disabled={loading || selectedPlatforms.length === 0}
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-800">
+                  className="inline-flex items-center gap-2 py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-800">
+                  <FilePlus2 className="w-4 h-4" />
                   {loading ? "Creating..." : "Create Post"}
                 </button>
               </div>
