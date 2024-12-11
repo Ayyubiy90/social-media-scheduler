@@ -9,7 +9,7 @@ import {
   loginUser,
   registerUser,
   logoutUser,
-  User
+  User,
 } from "../services/authService";
 
 interface UserContextType {
@@ -42,7 +42,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("token", userData.token);
       localStorage.setItem("uid", userData.uid);
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       throw error;
     }
   };
@@ -54,7 +54,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("token", newUser.token);
       localStorage.setItem("uid", newUser.uid);
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
       throw error;
     }
   };
