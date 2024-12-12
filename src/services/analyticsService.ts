@@ -49,7 +49,10 @@ export const analyticsService = {
         },
       }
     );
-    return response.data;
+    return response.data.map((post) => ({
+      ...post,
+      metrics: post.metrics as { [platform: string]: PostMetrics }, // Ensure PostMetrics is used
+    }));
   },
 
   // Get real-time metrics for active posts
@@ -71,14 +74,13 @@ export const analyticsService = {
     platform: string,
     timeframe: "week" | "month" | "year"
   ): Promise<{ day: string; hour: number; value: number }[]> {
-    const response = await axios.get<{ day: string; hour: number; value: number }[]>(
-      `${API_URL}/analytics/heatmap/${platform}?timeframe=${timeframe}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
-    );
+    const response = await axios.get<
+      { day: string; hour: number; value: number }[]
+    >(`${API_URL}/analytics/heatmap/${platform}?timeframe=${timeframe}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
     return response.data;
   },
 
@@ -87,7 +89,9 @@ export const analyticsService = {
     startDate: string,
     endDate: string
   ): Promise<{ platform: string; metrics: EngagementMetrics }[]> {
-    const response = await axios.get<{ platform: string; metrics: EngagementMetrics }[]>(
+    const response = await axios.get<
+      { platform: string; metrics: EngagementMetrics }[]
+    >(
       `${API_URL}/analytics/comparison?startDate=${startDate}&endDate=${endDate}`,
       {
         headers: {
