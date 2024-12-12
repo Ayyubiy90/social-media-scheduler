@@ -1,127 +1,102 @@
-const express = require("express");
+const express = require('express');
+console.log("Notification routes initialized");
 const router = express.Router();
-const {
-  verifyToken,
-  verifySession,
-} = require("./src/middleware/authMiddleware.cjs");
-const {
-  sendNotification,
-  schedulePrePostNotification,
-  createNotificationSettings,
-  getNotificationSettings,
-  updateNotificationSettings,
-  getUserNotifications,
-  markNotificationAsRead,
-} = require("./src/services/notificationService.cjs");
+const NotificationService = require('./src/services/notificationService.cjs');
+const { verifyToken, verifySession } = require('./src/middleware/authMiddleware.cjs');
 
-// Get user's notification settings
-router.get("/settings", verifyToken, verifySession, async (req, res) => {
+// Get notification settings
+router.get('/settings', verifyToken, verifySession, async (req, res) => {
   try {
-    const settings = await getNotificationSettings(req.user.uid);
+    const { uid } = req.user;
+    const settings = await NotificationService.getNotificationSettings(uid);
     res.json(settings);
   } catch (error) {
-    console.error("Error getting notification settings:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Create/Update notification settings
-router.post("/settings", verifyToken, verifySession, async (req, res) => {
-  try {
-    const { preferences } = req.body;
-    const settings = await createNotificationSettings(
-      req.user.uid,
-      preferences
-    );
-    res.json(settings);
-  } catch (error) {
-    console.error("Error creating notification settings:", error);
+    console.error("Error getting notification settings:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
 // Update notification settings
-router.put("/settings", verifyToken, verifySession, async (req, res) => {
+router.put('/settings', verifyToken, verifySession, async (req, res) => {
   try {
-    const { preferences } = req.body;
-    const settings = await updateNotificationSettings(
-      req.user.uid,
-      preferences
-    );
+    const { uid } = req.user;
+    const settings = await NotificationService.updateNotificationSettings(uid, req.body);
     res.json(settings);
   } catch (error) {
-    console.error("Error updating notification settings:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Error updating notification settings:", error.message);
+    if (error.message === 'Invalid settings') {
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 
-// Get user's notifications with filtering and pagination
-router.get("/", verifyToken, verifySession, async (req, res) => {
+// Get user notifications
+router.get('/', verifyToken, verifySession, async (req, res) => {
   try {
-    const { limit, status, type } = req.query;
-    const notifications = await getUserNotifications(req.user.uid, {
-      limit: parseInt(limit) || 20,
-      status,
-      type,
-    });
+    const { uid } = req.user;
+    const { read } = req.query;
+    let notifications = await NotificationService.getUserNotifications(uid);
+    
+    if (read === 'true' || read === 'false') {
+      const readBoolean = read === 'true';
+      notifications = notifications.filter(n => n.read === readBoolean);
+    }
+    
     res.json(notifications);
   } catch (error) {
-    console.error("Error getting notifications:", error);
+    console.error("Error getting notifications:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Schedule a pre-post notification
-router.post(
-  "/schedule/pre-post",
-  verifyToken,
-  verifySession,
-  async (req, res) => {
-    try {
-      const { postId, publishTime } = req.body;
-      const notification = await schedulePrePostNotification(
-        req.user.uid,
-        postId,
-        new Date(publishTime)
-      );
-      res.json(notification);
-    } catch (error) {
-      console.error("Error scheduling pre-post notification:", error);
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
-
 // Mark notification as read
-router.put(
-  "/:notificationId/read",
-  verifyToken,
-  verifySession,
-  async (req, res) => {
-    try {
-      const { notificationId } = req.params;
-      const result = await markNotificationAsRead(notificationId);
-      res.json(result);
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
-
-// Send immediate notification (for testing)
-router.post("/send", verifyToken, verifySession, async (req, res) => {
+router.put('/:id/read', verifyToken, verifySession, async (req, res) => {
   try {
-    const { title, message, type } = req.body;
-    const result = await sendNotification(req.user.uid, {
-      title,
-      message,
-      type,
-    });
+    const result = await NotificationService.markNotificationAsRead(req.params.id);
     res.json(result);
   } catch (error) {
-    console.error("Error sending notification:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Error marking notification as read:", error.message);
+    if (error.message === 'Notification not found') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+// Delete notification
+router.delete('/:id', verifyToken, verifySession, async (req, res) => {
+  try {
+    const result = await NotificationService.deleteNotification(req.params.id);
+    res.json(result);
+  } catch (error) {
+    console.error("Error deleting notification:", error.message);
+    if (error.message === 'Notification not found') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+// Send test notification
+router.post('/test', verifyToken, verifySession, async (req, res) => {
+  try {
+    const { type, destination } = req.body;
+    if (!type || !destination) {
+      return res.status(400).json({ error: 'Type and destination are required' });
+    }
+    const result = await NotificationService.sendTestNotification(type, destination);
+    res.json(result);
+  } catch (error) {
+    console.error("Error sending test notification:", error.message);
+    if (error.message === 'Invalid notification type') {
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 

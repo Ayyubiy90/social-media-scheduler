@@ -1,0 +1,226 @@
+{
+  "info": {
+    "name": "Social Media Scheduler API",
+    "description": "API documentation for the Social Media Scheduler application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "Authentication related endpoints",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "description": "Authenticate user and get access token"
+          }
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"displayName\": \"New User\"\n}"
+            },
+            "description": "Register a new user"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Posts",
+      "description": "Post management endpoints",
+      "item": [
+        {
+          "name": "Create Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Post content\",\n  \"platforms\": [\"twitter\", \"facebook\"],\n  \"scheduledFor\": \"2024-03-15T10:00:00Z\",\n  \"media\": [\"image1.jpg\"]\n}"
+            },
+            "description": "Create a new post"
+          }
+        },
+        {
+          "name": "Get Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts"],
+              "query": [
+                {
+                  "key": "platform",
+                  "value": "twitter",
+                  "description": "Filter by platform",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get all posts for the authenticated user"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "description": "Analytics related endpoints",
+      "item": [
+        {
+          "name": "Get Engagement Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/engagement?startDate=2024-03-01&endDate=2024-03-07",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "engagement"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-03-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-03-07"
+                }
+              ]
+            },
+            "description": "Get engagement metrics for a date range"
+          }
+        },
+        {
+          "name": "Get Platform Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/platforms/twitter",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "platforms", "twitter"]
+            },
+            "description": "Get statistics for a specific platform"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "Notification related endpoints",
+      "item": [
+        {
+          "name": "Get Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            },
+            "description": "Get user notifications"
+          }
+        },
+        {
+          "name": "Update Notification Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "settings"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prePostReminders\": true,\n  \"reminderTime\": 30\n}"
+            },
+            "description": "Update notification settings"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ]
+}

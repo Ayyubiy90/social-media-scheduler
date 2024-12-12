@@ -1,10 +1,7 @@
 const express = require("express");
-const admin = require("firebase-admin");
-const { getAuth } = require("firebase-admin/auth");
-const passport = require("./src/middleware/oauthMiddleware.cjs");
-
 const router = express.Router();
-const { verifyToken } = require("./src/middleware/authMiddleware.cjs");
+const AuthService = require('./src/services/authService.cjs');
+const passport = require("./src/middleware/oauthMiddleware.cjs");
 
 // Initialize passport middleware
 router.use(passport.initialize());
@@ -12,212 +9,114 @@ router.use(passport.session());
 
 // User Registration
 router.post("/register", async (req, res) => {
-  const { email, password } = req.body;
   try {
-    const userRecord = await getAuth().createUser({
-      email,
-      password,
-    });
+    const { email, password, displayName } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
 
-    // Generate a session cookie
-    const sessionCookie = await admin
-      .auth()
-      .createSessionCookie(userRecord.uid, {
-        expiresIn: 60 * 60 * 24 * 5 * 1000,
-      }); // 5 days
-
-    res.cookie("session", sessionCookie, {
-      maxAge: 5 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-    });
-    res.status(201).send({
-      uid: userRecord.uid,
-      message: "Registration successful",
+    const result = await AuthService.registerUser({ email, password, displayName });
+    res.status(201).json({
+      token: result.token,
+      user: {
+        uid: result.uid,
+        email: result.email,
+        displayName: result.displayName
+      }
     });
   } catch (error) {
-    res.status(400).send({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 });
 
 // User Login
 router.post("/login", async (req, res) => {
-  const { token } = req.body; // Expecting the ID token from the client
   try {
-    // Verify the ID token
-    const decodedToken = await admin.auth().verifyIdToken(token, true);
-    const uid = decodedToken.uid;
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-    // Generate a session cookie
-    const sessionCookie = await admin.auth().createSessionCookie(token, {
-      expiresIn: 60 * 60 * 24 * 5 * 1000,
-    }); // 5 days
-
-    res.cookie("session", sessionCookie, {
-      maxAge: 5 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-    });
-    res.status(200).send({
-      uid: uid,
-      message: "Login successful",
+    const result = await AuthService.loginUser({ email, password });
+    res.status(200).json({
+      token: result.token,
+      user: {
+        uid: result.uid,
+        email: result.email,
+        displayName: result.displayName
+      }
     });
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(400).send({ error: error.message });
+    res.status(401).json({ error: error.message });
+  }
+});
+
+// Token Verification
+router.get("/verify", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ valid: false, error: 'No token provided' });
+    }
+
+    const result = await AuthService.verifyToken(token);
+    res.status(200).json({
+      valid: true,
+      user: {
+        uid: result.uid,
+        email: result.email,
+        displayName: result.displayName
+      }
+    });
+  } catch (error) {
+    res.status(401).json({ valid: false, error: error.message });
   }
 });
 
 // User Logout
-router.post("/logout", verifyToken, async (req, res) => {
-  const { uid } = req.user;
+router.get("/logout", async (req, res) => {
   try {
-    await getAuth().revokeRefreshTokens(uid);
-    res.clearCookie("session");
-    res.status(200).send({ message: "User logged out successfully" });
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+      await AuthService.logoutUser(token);
+    }
+    res.status(200).json({ message: 'Logged out successfully' });
   } catch (error) {
-    res.status(500).send({ error: "Failed to logout user" });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // OAuth Routes
-router.get(
-  "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
+const platforms = ['google', 'facebook', 'twitter', 'linkedin'];
 
-router.get(
-  "/google/callback",
-  passport.authenticate("google", { failureRedirect: "/login" }),
-  async (req, res) => {
-    try {
-      const sessionCookie = await admin
-        .auth()
-        .createSessionCookie(req.user.uid, {
-          expiresIn: 60 * 60 * 24 * 5 * 1000,
-        }); // 5 days
-      res.cookie("session", sessionCookie, {
-        maxAge: 5 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      });
-      res.redirect("/dashboard");
-    } catch (error) {
-      console.error("Error creating session:", error);
-      res.redirect("/login");
-    }
-  }
-);
-
-// Facebook OAuth
-router.get(
-  "/facebook",
-  passport.authenticate("facebook", { scope: ["email"] })
-);
-
-router.get(
-  "/facebook/callback",
-  passport.authenticate("facebook", { failureRedirect: "/login" }),
-  async (req, res) => {
-    try {
-      const sessionCookie = await admin
-        .auth()
-        .createSessionCookie(req.user.uid, {
-          expiresIn: 60 * 60 * 24 * 5 * 1000,
-        }); // 5 days
-      res.cookie("session", sessionCookie, {
-        maxAge: 5 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      });
-      res.redirect("/dashboard");
-    } catch (error) {
-      console.error("Error creating session:", error);
-      res.redirect("/login");
-    }
-  }
-);
-
-// Twitter OAuth
-router.get("/twitter", passport.authenticate("twitter"));
-
-router.get(
-  "/twitter/callback",
-  passport.authenticate("twitter", { failureRedirect: "/login" }),
-  async (req, res) => {
-    try {
-      const sessionCookie = await admin
-        .auth()
-        .createSessionCookie(req.user.uid, {
-          expiresIn: 60 * 60 * 24 * 5 * 1000,
-        }); // 5 days
-      res.cookie("session", sessionCookie, {
-        maxAge: 5 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      });
-      res.redirect("/dashboard");
-    } catch (error) {
-      console.error("Error creating session:", error);
-      res.redirect("/login");
-    }
-  }
-);
-
-// Social Media Account Management
-// Get connected social media accounts
-router.get("/connected-accounts", verifyToken, async (req, res) => {
-  try {
-    const userRef = await admin
-      .firestore()
-      .collection("users")
-      .doc(req.user.uid)
-      .get();
-    if (!userRef.exists) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const userData = userRef.data();
-    const connectedAccounts = {
-      google: !!userData.googleId,
-      facebook: !!userData.facebookId,
-      twitter: !!userData.twitterId,
+platforms.forEach(platform => {
+  // OAuth initialization route
+  router.get(`/${platform}`, (req, res, next) => {
+    const scope = platform === 'google' ? ['profile', 'email'] : ['email'];
+    const options = {
+      scope,
+      session: false,
+      failureRedirect: '/login'
     };
 
-    res.json(connectedAccounts);
-  } catch (error) {
-    console.error("Error fetching connected accounts:", error);
-    res.status(500).json({ error: "Failed to fetch connected accounts" });
-  }
-});
+    // Call passport.authenticate directly and handle the response
+    passport.authenticate(platform, options)(req, res, () => {
+      res.redirect('/dashboard');
+    });
+  });
 
-// Disconnect social media account
-router.delete("/disconnect/:platform", verifyToken, async (req, res) => {
-  const { platform } = req.params;
-  const validPlatforms = ["google", "facebook", "twitter"];
+  // OAuth callback route
+  router.get(`/${platform}/callback`, (req, res, next) => {
+    const options = {
+      session: false,
+      failureRedirect: '/login'
+    };
 
-  if (!validPlatforms.includes(platform)) {
-    return res.status(400).json({ error: "Invalid platform" });
-  }
-
-  try {
-    const userRef = admin.firestore().collection("users").doc(req.user.uid);
-    const update = {};
-    update[`${platform}Id`] = admin.firestore.FieldValue.delete();
-    update[`${platform}AccessToken`] = admin.firestore.FieldValue.delete();
-    update[`${platform}RefreshToken`] = admin.firestore.FieldValue.delete();
-
-    await userRef.update(update);
-    res.json({ message: `Successfully disconnected ${platform} account` });
-  } catch (error) {
-    console.error(`Error disconnecting ${platform} account:`, error);
-    res.status(500).json({ error: `Failed to disconnect ${platform} account` });
-  }
+    // Call passport.authenticate directly and handle the response
+    passport.authenticate(platform, options)(req, res, () => {
+      res.redirect('/dashboard');
+    });
+  });
 });
 
 module.exports = router;

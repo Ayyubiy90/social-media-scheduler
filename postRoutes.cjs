@@ -1,139 +1,155 @@
-const express = require("express");
-const admin = require("firebase-admin");
-const { verifyToken } = require("./src/middleware/authMiddleware.cjs");
+const express = require('express');
 const router = express.Router();
-const morgan = require('morgan');
+const PostService = require('./src/services/postService.cjs');
+const { verifyToken, verifySession } = require('./src/middleware/authMiddleware.cjs');
 
-// Use morgan for logging requests
-router.use(morgan('combined'));
-
-// Middleware for post validation
-const validatePostContent = (req, res, next) => {
-  const { content } = req.body;
-  if (!content || content.length > 280) {
-    return res.status(400).send({ error: "Post content is required and must be under 280 characters." });
-  }
-  next();
-};
-
-// Create Post
-router.post("/posts", verifyToken, validatePostContent, async (req, res) => {
-  const { content } = req.body;
-  const userId = req.user.uid;
-
+// Create a new post
+router.post('/', verifyToken, verifySession, async (req, res) => {
   try {
-    const newPost = {
-      userId,
-      content,
-      status: "draft",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
+    const { content, platforms, scheduledFor, media } = req.body;
+    const { uid } = req.user;
 
-    const postRef = await admin.firestore().collection("posts").add(newPost);
-    res.status(201).send({ id: postRef.id, ...newPost });
-  } catch (error) {
-    res.status(500).send({ error: "Failed to create post." });
-  }
-});
-
-// Read Posts
-router.get("/posts", verifyToken, async (req, res) => {
-  const userId = req.user.uid;
-
-  try {
-    const postsSnapshot = await admin.firestore().collection("posts").where("userId", "==", userId).get();
-    const posts = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.status(200).send(posts);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to retrieve posts." });
-  }
-});
-
-// Update Post
-router.put("/posts/:id", verifyToken, validatePostContent, async (req, res) => {
-  const { id } = req.params;
-  const { content } = req.body;
-
-  try {
-    await admin.firestore().collection("posts").doc(id).update({
-      content,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    res.status(200).send({ message: "Post updated successfully." });
-  } catch (error) {
-    res.status(500).send({ error: "Failed to update post." });
-  }
-});
-
-// Delete Post
-router.delete("/posts/:id", verifyToken, async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    await admin.firestore().collection("posts").doc(id).delete();
-    res.status(200).send({ message: "Post deleted successfully." });
-  } catch (error) {
-    res.status(500).send({ error: "Failed to delete post." });
-  }
-});
-
-// Create Notification Settings
-router.post("/notifications/settings", verifyToken, async (req, res) => {
-  const { userId, preferences } = req.body;
-
-  try {
-    await admin.firestore().collection("users").doc(userId).set({
-      notificationSettings: preferences,
-    }, { merge: true });
-    res.status(201).send({ message: "Notification settings created successfully." });
-  } catch (error) {
-    res.status(500).send({ error: "Failed to create notification settings." });
-  }
-});
-
-// Get Notification Settings
-router.get("/notifications/settings", verifyToken, async (req, res) => {
-  const userId = req.user.uid;
-
-  try {
-    const userRef = await admin.firestore().collection("users").doc(userId).get();
-    if (!userRef.exists) {
-      return res.status(404).send({ error: "User not found." });
+    const validPlatforms = ['twitter', 'facebook', 'linkedin'];
+    if (!content || !platforms || !Array.isArray(platforms)) {
+      return res.status(400).json({ error: 'Invalid post data' });
     }
-    const userData = userRef.data();
-    res.status(200).send(userData.notificationSettings || {});
-  } catch (error) {
-    res.status(500).send({ error: "Failed to retrieve notification settings." });
-  }
-});
+    
+    // Validate platforms
+    const invalidPlatforms = platforms.filter(p => !validPlatforms.includes(p));
+    if (invalidPlatforms.length > 0) {
+      return res.status(400).json({ error: `Invalid platforms: ${invalidPlatforms.join(', ')}` });
+    }
 
-// Update Notification Settings
-router.put("/notifications/settings", verifyToken, async (req, res) => {
-  const userId = req.user.uid;
-  const { preferences } = req.body;
-
-  try {
-    await admin.firestore().collection("users").doc(userId).set({
-      notificationSettings: preferences,
-    }, { merge: true });
-    res.status(200).send({ message: "Notification settings updated successfully." });
-  } catch (error) {
-    res.status(500).send({ error: "Failed to update notification settings." });
-  }
-});
-
-// Delete Notification Settings
-router.delete("/notifications/settings", verifyToken, async (req, res) => {
-  const userId = req.user.uid;
-
-  try {
-    await admin.firestore().collection("users").doc(userId).update({
-      notificationSettings: admin.firestore.FieldValue.delete(),
+    const post = await PostService.createPost(uid, {
+      content,
+      platforms,
+      scheduledFor,
+      media
     });
-    res.status(200).send({ message: "Notification settings deleted successfully." });
+
+    res.status(201).json(post);
   } catch (error) {
-    res.status(500).send({ error: "Failed to delete notification settings." });
+    console.error('Error creating post:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all posts for user
+router.get('/', verifyToken, verifySession, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { platform } = req.query;
+    const validPlatforms = ['twitter', 'facebook', 'linkedin'];
+    
+    if (platform && !validPlatforms.includes(platform)) {
+      return res.status(400).json({ error: 'Invalid platform filter' });
+    }
+
+    const posts = await PostService.getPosts(uid, platform);
+    res.json(posts);
+  } catch (error) {
+    console.error('Error getting posts:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get post by ID
+router.get('/:id', verifyToken, verifySession, async (req, res) => {
+  try {
+    const post = await PostService.getPostById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    res.json(post);
+  } catch (error) {
+    console.error('Error getting post:', error.message);
+    if (error.message === 'Post not found') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+// Update post
+router.put('/:id', verifyToken, verifySession, async (req, res) => {
+  try {
+    const post = await PostService.updatePost(req.params.id, req.body);
+    res.json(post);
+  } catch (error) {
+    console.error('Error updating post:', error.message);
+    if (error.message === 'Post not found') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+// Delete post
+router.delete('/:id', verifyToken, verifySession, async (req, res) => {
+  try {
+    await PostService.deletePost(req.params.id);
+    res.json({ message: 'Post deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting post:', error.message);
+    if (error.message === 'Post not found') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+// Schedule post
+router.post('/:id/schedule', verifyToken, verifySession, async (req, res) => {
+  try {
+    const { scheduledFor, platforms } = req.body;
+
+    if (!scheduledFor || !Date.parse(scheduledFor)) {
+      return res.status(400).json({ error: 'Invalid schedule time' });
+    }
+
+    const post = await PostService.schedulePost(req.params.id, {
+      scheduledFor,
+      platforms
+    });
+    res.json(post);
+  } catch (error) {
+    console.error('Error scheduling post:', error.message);
+    if (error.message === 'Post not found') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+// Publish post
+router.post('/:id/publish', verifyToken, verifySession, async (req, res) => {
+  try {
+    const { platforms } = req.body;
+
+    const validPlatforms = ['twitter', 'facebook', 'linkedin'];
+    if (!platforms || !Array.isArray(platforms)) {
+      return res.status(400).json({ error: 'Invalid platforms' });
+    }
+
+    // Validate platforms
+    const invalidPlatforms = platforms.filter(p => !validPlatforms.includes(p));
+    if (invalidPlatforms.length > 0) {
+      return res.status(400).json({ error: `Invalid platforms: ${invalidPlatforms.join(', ')}` });
+    }
+
+    const post = await PostService.publishPost(req.params.id, platforms);
+    res.json(post);
+  } catch (error) {
+    console.error('Error publishing post:', error.message);
+    if (error.message === 'Post not found') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 

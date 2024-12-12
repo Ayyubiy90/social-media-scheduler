@@ -40,7 +40,7 @@ Key Components and Tasks
      - Implement functionality to publish posts to connected accounts.
    - Ensure compliance with each platform's API guidelines and rate limits.
 
-7. Analytics (Optional) ❌
+7. Analytics (Optional) ✅✅
    - If implementing post analytics, create endpoints to retrieve engagement metrics (likes, shares, comments) for published posts.
    - Store and manage analytics data in the database.
 

@@ -1,73 +1,178 @@
-const request = require("supertest");
-const express = require("express");
-const admin = require("firebase-admin");
-const postRoutes = require("../postRoutes.cjs");
+const request = require('supertest');
+const express = require('express');
+const { mockNotificationService } = require('./setup/notification.mock');
+require('./setup/firebase.mock');
 
-const app = express();
-app.use(express.json());
-app.use(postRoutes);
-
-// Mock Firebase Admin
-jest.mock("firebase-admin", () => ({
-  firestore: jest.fn(() => ({
-    collection: jest.fn(() => ({
-      doc: jest.fn(() => ({
-        set: jest.fn(() => ({})),
-        get: jest.fn(() => ({
-          exists: true,
-          data: jest.fn(() => ({ notificationSettings: { email: true } })), // Default settings for the test user
-        })),
-        update: jest.fn(() => ({})),
-        delete: jest.fn(() => ({})),
-      })),
-    })),
-  })),
+// Mock Auth Middleware
+jest.mock('../src/middleware/authMiddleware.cjs', () => ({
+  verifyToken: (req, res, next) => {
+    req.user = { uid: 'test-user-id' };
+    next();
+  },
+  verifySession: (req, res, next) => next()
 }));
 
-describe("Notification Routes", () => {
-  beforeAll(async () => {
-    jest.setTimeout(20000); // Increase timeout to 20 seconds
-    // Setup Firestore mock for test user
-    admin.firestore().collection("users").doc("testUser").set({
-      notificationSettings: { email: true } // Default settings for the test user
+const app = express();
+const notificationRoutes = require('../notificationRoutes.cjs');
+
+// Setup middleware and routes
+app.use(express.json());
+app.use('/notifications', notificationRoutes);
+
+describe('Notification Routes', () => {
+  let mockToken;
+  
+  beforeEach(() => {
+    mockToken = 'mock-token-123';
+    jest.clearAllMocks();
+  });
+
+  describe('GET /notifications', () => {
+    it('should return user notifications', async () => {
+      const response = await request(app)
+        .get('/notifications')
+        .set('Authorization', `Bearer ${mockToken}`);
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body[0]).toHaveProperty('id');
+      expect(response.body[0]).toHaveProperty('message');
+      expect(mockNotificationService.getUserNotifications).toHaveBeenCalledWith('test-user-id');
+    });
+
+    it('should filter notifications by read status', async () => {
+      const response = await request(app)
+        .get('/notifications?read=false')
+        .set('Authorization', `Bearer ${mockToken}`);
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      response.body.forEach(notification => {
+        expect(notification.read).toBe(false);
+      });
     });
   });
 
-it("should create notification settings", async () => {
-  jest.setTimeout(10000); // Increase timeout to 10 seconds
-    const response = await request(app)
-      .post("/notifications/settings")
-      .set("Authorization", "Bearer testToken") // Ensure Authorization header is set
-      .send({ userId: "testUser", preferences: { email: true } });
-    expect(response.status).toBe(201);
-    expect(response.body.message).toBe("Notification settings created successfully.");
+  describe('PUT /notifications/:id/read', () => {
+    it('should mark notification as read', async () => {
+      const response = await request(app)
+        .put('/notifications/1/read')
+        .set('Authorization', `Bearer ${mockToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(mockNotificationService.markNotificationAsRead).toHaveBeenCalledWith('1');
+    });
+
+    it('should return 404 for non-existent notification', async () => {
+      const response = await request(app)
+        .put('/notifications/non-existent-id/read')
+        .set('Authorization', `Bearer ${mockToken}`);
+
+      expect(response.status).toBe(404);
+    });
   });
 
-it("should retrieve notification settings", async () => {
-  jest.setTimeout(10000); // Increase timeout to 10 seconds
-    const response = await request(app)
-      .get("/notifications/settings")
-      .set("Authorization", "Bearer testToken"); // Ensure Authorization header is set
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({ email: true });
+  describe('DELETE /notifications/:id', () => {
+    it('should delete notification', async () => {
+      const response = await request(app)
+        .delete('/notifications/1')
+        .set('Authorization', `Bearer ${mockToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe('Notification deleted successfully');
+      expect(mockNotificationService.deleteNotification).toHaveBeenCalledWith('1');
+    });
+
+    it('should return 404 for non-existent notification', async () => {
+      const response = await request(app)
+        .delete('/notifications/non-existent-id')
+        .set('Authorization', `Bearer ${mockToken}`);
+
+      expect(response.status).toBe(404);
+    });
   });
 
-it("should update notification settings", async () => {
-  jest.setTimeout(10000); // Increase timeout to 10 seconds
-    const response = await request(app)
-      .put("/notifications/settings")
-      .set("Authorization", "Bearer testToken") // Ensure Authorization header is set
-      .send({ preferences: { email: false } });
-    expect(response.status).toBe(200);
-    expect(response.body.message).toBe("Notification settings updated successfully.");
+  describe('PUT /notifications/settings', () => {
+    const mockSettings = {
+      prePostReminders: true,
+      reminderTime: 30,
+      emailNotifications: true,
+      pushNotifications: false
+    };
+
+    it('should update notification settings', async () => {
+      const response = await request(app)
+        .put('/notifications/settings')
+        .send(mockSettings)
+        .set('Authorization', `Bearer ${mockToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.prePostReminders).toBe(mockSettings.prePostReminders);
+      expect(response.body.reminderTime).toBe(mockSettings.reminderTime);
+      expect(mockNotificationService.updateNotificationSettings).toHaveBeenCalledWith(
+        'test-user-id',
+        mockSettings
+      );
+    });
+
+    it('should return 400 for invalid settings', async () => {
+      const response = await request(app)
+        .put('/notifications/settings')
+        .send({
+          reminderTime: 'invalid'
+        })
+        .set('Authorization', `Bearer ${mockToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error');
+    });
   });
 
-it("should delete notification settings", async () => {
-  jest.setTimeout(10000); // Increase timeout to 10 seconds
-    const response = await request(app)
-      .delete("/notifications/settings")
-      .set("Authorization", "Bearer testToken"); // Ensure Authorization header is set
-    expect(response.status).toBe(200);
-    expect(response.body.message).toBe("Notification settings deleted successfully.");
+  describe('POST /notifications/test', () => {
+    it('should send test notification', async () => {
+      const testData = {
+        type: 'email',
+        destination: 'test@example.com'
+      };
+
+      const response = await request(app)
+        .post('/notifications/test')
+        .send(testData)
+        .set('Authorization', `Bearer ${mockToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe('Test notification sent successfully');
+      expect(mockNotificationService.sendTestNotification).toHaveBeenCalledWith(
+        testData.type,
+        testData.destination
+      );
+    });
+
+    it('should return 400 for invalid notification type', async () => {
+      const response = await request(app)
+        .post('/notifications/test')
+        .send({
+          type: 'invalid',
+          destination: 'test@example.com'
+        })
+        .set('Authorization', `Bearer ${mockToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error');
+    });
+  });
+
+  describe('GET /notifications/settings', () => {
+    it('should return user notification settings', async () => {
+      const response = await request(app)
+        .get('/notifications/settings')
+        .set('Authorization', `Bearer ${mockToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('prePostReminders');
+      expect(response.body).toHaveProperty('reminderTime');
+      expect(mockNotificationService.getNotificationSettings).toHaveBeenCalledWith('test-user-id');
+    });
   });
 });
