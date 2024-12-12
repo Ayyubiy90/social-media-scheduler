@@ -12,6 +12,7 @@ const {
 } = require("./jobQueue.cjs");
 const authRoutes = require("./authRoutes.cjs");
 const notificationRoutes = require("./notificationRoutes.cjs");
+const analyticsRoutes = require("./analyticsRoutes.cjs");
 
 const app = express();
 const port = 5000;
@@ -74,6 +75,7 @@ const {
 // Routes
 app.use("/auth", authRoutes);
 app.use("/notifications", notificationRoutes);
+app.use("/analytics", analyticsRoutes);
 
 // Post management endpoints
 app.post("/schedule", verifyToken, verifySession, (req, res) => {

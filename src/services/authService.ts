@@ -4,7 +4,6 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
-  signInAnonymously,
   signOut,
   onAuthStateChanged,
   User as FirebaseUser,
@@ -76,8 +75,8 @@ export const loginUser = async (credentials: Credentials): Promise<User> => {
 
     const user = await mapFirebaseUserToUser(userCredential.user);
 
-    // Get a fresh token with a long expiration
-    const token = await userCredential.user.getIdToken(true);
+    // Get a fresh token
+    const token = await userCredential.user.getIdToken();
 
     // Verify with backend
     await axios.post<AuthResponse>(
@@ -103,34 +102,12 @@ export const registerUser = async (userData: Credentials): Promise<User> => {
 
     const user = await mapFirebaseUserToUser(userCredential.user);
 
-    // Get a fresh token with a long expiration
-    const token = await userCredential.user.getIdToken(true);
+    // Get a fresh token
+    const token = await userCredential.user.getIdToken();
 
     // Register with backend
     await axios.post<AuthResponse>(
       `${API_URL}/auth/register`,
-      { token },
-      { withCredentials: true }
-    );
-
-    return user;
-  } catch (error) {
-    throw handleApiError(error);
-  }
-};
-
-export const anonymousLogin = async (): Promise<User> => {
-  try {
-    const auth = getAuth();
-    const userCredential = await signInAnonymously(auth);
-    const user = await mapFirebaseUserToUser(userCredential.user);
-
-    // Get a fresh token with a long expiration
-    const token = await userCredential.user.getIdToken(true);
-
-    // Verify with backend
-    await axios.post<AuthResponse>(
-      `${API_URL}/auth/anonymous-login`,
       { token },
       { withCredentials: true }
     );
@@ -163,8 +140,8 @@ export const socialLogin = async (provider: string): Promise<User> => {
     const result = await signInWithPopup(auth, selectedProvider);
     const user = await mapFirebaseUserToUser(result.user);
 
-    // Get a fresh token with a long expiration
-    const token = await result.user.getIdToken(true);
+    // Get a fresh token
+    const token = await result.user.getIdToken();
 
     // Verify with backend
     await axios.post<AuthResponse>(
@@ -185,6 +162,7 @@ export const logoutUser = async (): Promise<void> => {
     const token = await auth.currentUser?.getIdToken();
 
     if (token) {
+      // Clear backend session
       await axios.post(`${API_URL}/auth/logout`, null, {
         withCredentials: true,
         headers: {
@@ -193,9 +171,19 @@ export const logoutUser = async (): Promise<void> => {
       });
     }
 
+    // Sign out from Firebase
     await signOut(auth);
+
+    // Clear any stored session data
+    localStorage.removeItem('user');
+    sessionStorage.clear();
   } catch (error) {
     console.error("Logout error:", error);
+    // Still attempt to clear local state even if backend logout fails
+    const auth = getAuth();
+    await signOut(auth);
+    localStorage.removeItem('user');
+    sessionStorage.clear();
   }
 };
 
@@ -205,8 +193,13 @@ export const subscribeToAuthChanges = (
   const auth = getAuth();
   return onAuthStateChanged(auth, async (firebaseUser) => {
     if (firebaseUser) {
-      const user = await mapFirebaseUserToUser(firebaseUser);
-      callback(user);
+      try {
+        const user = await mapFirebaseUserToUser(firebaseUser);
+        callback(user);
+      } catch (error) {
+        console.error("Error in auth state change:", error);
+        callback(null);
+      }
     } else {
       callback(null);
     }

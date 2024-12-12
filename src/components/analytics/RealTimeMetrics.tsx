@@ -1,37 +1,62 @@
-import React from 'react';
-import { TrendingUp, Users, MousePointer, Share2 } from 'lucide-react';
+import React from "react";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+
+import type { RealTimeMetric } from "../../types/analytics";
 
 interface RealTimeMetricsProps {
-  metrics: {
-    currentEngagement: number;
-    activeUsers: number;
-    clickRate: number;
-    shareCount: number;
-  };
+  metrics: RealTimeMetric[];
 }
 
-export function RealTimeMetrics({ metrics }: RealTimeMetricsProps) {
-  const stats = [
-    { name: 'Current Engagement', value: `${metrics.currentEngagement}%`, icon: TrendingUp },
-    { name: 'Active Users', value: metrics.activeUsers, icon: Users },
-    { name: 'Click Rate', value: `${metrics.clickRate}%`, icon: MousePointer },
-    { name: 'Share Count', value: metrics.shareCount, icon: Share2 },
-  ];
+export const RealTimeMetrics: React.FC<RealTimeMetricsProps> = ({
+  metrics,
+}) => {
+  const getTrendIcon = (trend: "up" | "down" | "neutral") => {
+    switch (trend) {
+      case "up":
+        return <TrendingUp className="w-4 h-4 text-green-500" />;
+      case "down":
+        return <TrendingDown className="w-4 h-4 text-red-500" />;
+      default:
+        return <Minus className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const getTrendColor = (trend: "up" | "down" | "neutral") => {
+    switch (trend) {
+      case "up":
+        return "text-green-500";
+      case "down":
+        return "text-red-500";
+      default:
+        return "text-gray-500";
+    }
+  };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Real-Time Metrics</h3>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {stats.map((stat) => (
-          <div key={stat.name} className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+    <div className="grid grid-cols-2 gap-4">
+      {metrics.map((metric) => (
+        <div
+          key={metric.name}
+          className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            {metric.name}
+          </h3>
+          <div className="mt-2 flex items-baseline justify-between">
+            <p className="text-2xl font-semibold text-gray-900 dark:text-white">
+              {metric.value}
+            </p>
             <div className="flex items-center">
-              <stat.icon className="h-5 w-5 text-gray-400 dark:text-gray-300" />
-              <span className="ml-2 text-sm font-medium text-gray-500 dark:text-gray-300">{stat.name}</span>
+              {getTrendIcon(metric.trend)}
+              <span
+                className={`ml-2 text-sm font-medium ${getTrendColor(
+                  metric.trend
+                )}`}>
+                {metric.change}%
+              </span>
             </div>
-            <div className="mt-2 text-xl font-semibold text-gray-900 dark:text-white">{stat.value}</div>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
-}
+};

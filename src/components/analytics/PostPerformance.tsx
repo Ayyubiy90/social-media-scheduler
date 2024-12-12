@@ -1,59 +1,101 @@
-import React from 'react';
-import { usePosts } from '../../contexts/PostContext';
-import { format } from 'date-fns';
+import React from "react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
-export function PostPerformance() {
-  const { posts } = usePosts();
-  
+import type { PostAnalytics } from "../../types/analytics";
+
+interface PostPerformanceProps {
+  data: PostAnalytics[];
+}
+
+export const PostPerformance: React.FC<PostPerformanceProps> = ({ data }) => {
+  const formatData = (posts: PostAnalytics[]) => {
+    return posts.map((post) => ({
+      content: post.content.substring(0, 30) + "...",
+      totalEngagement: post.totalEngagement,
+      ...Object.entries(post.metrics).reduce(
+        (acc, [platform, metrics]) => ({
+          ...acc,
+          [`${platform}_likes`]: metrics.likes,
+          [`${platform}_shares`]: metrics.shares,
+          [`${platform}_comments`]: metrics.comments,
+        }),
+        {}
+      ),
+    }));
+  };
+
+  const formattedData = formatData(data);
+
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
-      <div className="p-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Post Performance</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead>
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Content
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Platforms
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {posts.map((post) => (
-                <tr key={post.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {post.content.substring(0, 50)}...
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {post.platforms.join(', ')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {format(new Date(post.createdAt), 'MMM d, yyyy')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      post.status === 'published' 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' 
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100'
-                    }`}>
-                      {post.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <div className="h-96 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={formattedData}
+          margin={{
+            top: 20,
+            right: 30,
+            left: 20,
+            bottom: 60,
+          }}>
+          <CartesianGrid
+            strokeDasharray="3 3"
+            className="stroke-gray-200 dark:stroke-gray-700"
+          />
+          <XAxis
+            dataKey="content"
+            angle={-45}
+            textAnchor="end"
+            height={60}
+            className="text-gray-600 dark:text-gray-400"
+          />
+          <YAxis className="text-gray-600 dark:text-gray-400" />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "rgba(255, 255, 255, 0.9)",
+              border: "none",
+              borderRadius: "0.5rem",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            }}
+          />
+          <Bar
+            dataKey="totalEngagement"
+            fill="#3B82F6"
+            name="Total Engagement"
+          />
+          <Bar
+            dataKey="facebook_likes"
+            stackId="a"
+            fill="#1877F2"
+            name="Facebook Likes"
+          />
+          <Bar
+            dataKey="twitter_likes"
+            stackId="a"
+            fill="#1DA1F2"
+            name="Twitter Likes"
+          />
+          <Bar
+            dataKey="linkedin_likes"
+            stackId="a"
+            fill="#0A66C2"
+            name="LinkedIn Likes"
+          />
+          <Bar
+            dataKey="instagram_likes"
+            stackId="a"
+            fill="#E4405F"
+            name="Instagram Likes"
+          />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
-}
+};

@@ -76,7 +76,7 @@ router.post("/logout", verifyToken, async (req, res) => {
   try {
     await getAuth().revokeRefreshTokens(uid);
     res.clearCookie("session");
-    res.status(200).send({ message: "User  logged out successfully" });
+    res.status(200).send({ message: "User logged out successfully" });
   } catch (error) {
     res.status(500).send({ error: "Failed to logout user" });
   }
@@ -169,33 +169,6 @@ router.get(
   }
 );
 
-// LinkedIn OAuth
-router.get("/linkedin", passport.authenticate("linkedin"));
-
-router.get(
-  "/linkedin/callback",
-  passport.authenticate("linkedin", { failureRedirect: "/login" }),
-  async (req, res) => {
-    try {
-      const sessionCookie = await admin
-        .auth()
-        .createSessionCookie(req.user.uid, {
-          expiresIn: 60 * 60 * 24 * 5 * 1000,
-        }); // 5 days
-      res.cookie("session", sessionCookie, {
-        maxAge: 5 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      });
-      res.redirect("/dashboard");
-    } catch (error) {
-      console.error("Error creating session:", error);
-      res.redirect("/login");
-    }
-  }
-);
-
 // Social Media Account Management
 // Get connected social media accounts
 router.get("/connected-accounts", verifyToken, async (req, res) => {
@@ -206,7 +179,7 @@ router.get("/connected-accounts", verifyToken, async (req, res) => {
       .doc(req.user.uid)
       .get();
     if (!userRef.exists) {
-      return res.status(404).json({ error: "User  not found" });
+      return res.status(404).json({ error: "User not found" });
     }
 
     const userData = userRef.data();
@@ -214,7 +187,6 @@ router.get("/connected-accounts", verifyToken, async (req, res) => {
       google: !!userData.googleId,
       facebook: !!userData.facebookId,
       twitter: !!userData.twitterId,
-      linkedin: !!userData.linkedinId,
     };
 
     res.json(connectedAccounts);
@@ -227,7 +199,7 @@ router.get("/connected-accounts", verifyToken, async (req, res) => {
 // Disconnect social media account
 router.delete("/disconnect/:platform", verifyToken, async (req, res) => {
   const { platform } = req.params;
-  const validPlatforms = ["google", "facebook", "twitter", "linkedin"];
+  const validPlatforms = ["google", "facebook", "twitter"];
 
   if (!validPlatforms.includes(platform)) {
     return res.status(400).json({ error: "Invalid platform" });
@@ -241,7 +213,7 @@ router.delete("/disconnect/:platform", verifyToken, async (req, res) => {
     update[`${platform}RefreshToken`] = admin.firestore.FieldValue.delete();
 
     await userRef.update(update);
-    res.json({ message: `Successfully disconnected ${platform} account ` });
+    res.json({ message: `Successfully disconnected ${platform} account` });
   } catch (error) {
     console.error(`Error disconnecting ${platform} account:`, error);
     res.status(500).json({ error: `Failed to disconnect ${platform} account` });
