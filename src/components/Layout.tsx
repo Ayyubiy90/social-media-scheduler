@@ -9,11 +9,25 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [, setLocation] = useLocation();
 
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [setLocation]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (!mobile && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isSidebarOpen]);
 
   useEffect(() => {
     if (isSidebarOpen) {
@@ -31,7 +45,10 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <TopNav onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
+      <TopNav 
+        onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+        isMobile={isMobile}
+      />
       
       <div className="flex pt-16">
         {/* Overlay */}
@@ -51,7 +68,10 @@ export function Layout({ children }: LayoutProps) {
           ${isSidebarOpen ? 'shadow-xl' : ''}`}
         >
           <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
-            <Sidebar onClose={() => setIsSidebarOpen(false)} />
+            <Sidebar 
+              onClose={() => setIsSidebarOpen(false)} 
+              isMobile={isMobile}
+            />
           </div>
         </div>
 
