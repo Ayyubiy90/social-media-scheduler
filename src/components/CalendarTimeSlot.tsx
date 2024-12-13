@@ -1,5 +1,5 @@
-import React from 'react';
-import { useDroppable } from '@dnd-kit/core';
+import React from "react";
+import { useDroppable } from "@dnd-kit/core";
 
 interface CalendarTimeSlotProps {
   id: string;
@@ -15,8 +15,7 @@ export function CalendarTimeSlot({ id, children }: CalendarTimeSlotProps) {
   return (
     <div
       ref={setNodeRef}
-      className="h-20 border-b border-gray-200 dark:border-gray-700 p-1 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-    >
+      className="h-20 border-b border-gray-200 dark:border-gray-700 p-1 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
       {children}
     </div>
   );

@@ -12,6 +12,8 @@ import {
   CalendarCheck,
   Archive,
   BarChart2,
+  Calendar,
+  Settings,
 } from "lucide-react";
 
 const Dashboard = () => {
@@ -75,10 +77,22 @@ const Dashboard = () => {
                   Analytics
                 </button>
                 <button
+                  onClick={() => navigate("/calendar")}
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                  <Calendar className="w-4 h-4" />
+                  Calendar
+                </button>
+                <button
                   onClick={() => navigate("/create-post")}
                   className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                   <FilePlus2 className="w-4 h-4" />
                   Create Post
+                </button>
+                <button
+                  onClick={() => navigate("/settings")}
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                  <Settings className="w-4 h-4" />
+                  Settings
                 </button>
                 <button
                   onClick={handleLogout}

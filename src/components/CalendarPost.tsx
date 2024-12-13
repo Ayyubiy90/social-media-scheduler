@@ -1,6 +1,6 @@
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { Post } from '../types';
+import { Post } from '../types/database';
 
 interface CalendarPostProps {
   post: Post;

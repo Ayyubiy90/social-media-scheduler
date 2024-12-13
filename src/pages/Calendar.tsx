@@ -4,11 +4,11 @@ import {
   addDays,
   startOfWeek,
   isSameDay,
-  parseISO,
   setHours,
 } from "date-fns";
 import { DndContext, DragEndEvent, closestCenter } from "@dnd-kit/core";
-import { usePosts } from "../contexts/PostContext";
+import { usePost } from "../contexts/PostContext";
+import { Post } from "../types/database";
 import { CalendarPost } from "../components/CalendarPost";
 import { CalendarTimeSlot } from "../components/CalendarTimeSlot";
 import {
@@ -21,7 +21,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const DAYS = Array.from({ length: 7 }, (_, i) => i);
 
 export function Calendar() {
-  const { posts, updatePost } = usePosts();
+  const { posts, schedulePost } = usePost();
   const [selectedDate, setSelectedDate] = React.useState(new Date());
   const weekStart = startOfWeek(selectedDate);
 
@@ -33,10 +33,14 @@ export function Calendar() {
     const newDate = addDays(weekStart, dayOffset);
     newDate.setHours(hour, 0, 0, 0);
 
-    updatePost(active.id as string, {
-      scheduledFor: newDate.toISOString(),
-      status: "scheduled",
-    });
+    const post = posts.find(p => p.id === active.id);
+    if (!post) return;
+    
+    try {
+      schedulePost(post, newDate);
+    } catch (error) {
+      console.error("Failed to schedule post:", error);
+    }
   };
 
   return (
@@ -116,10 +120,13 @@ export function Calendar() {
                 date.setHours(hour, 0, 0, 0);
                 const scheduledPosts = posts.filter(
                   (post) =>
-                    post.scheduledFor &&
-                    isSameDay(parseISO(post.scheduledFor), date) &&
-                    parseISO(post.scheduledFor).getHours() === hour
-                );
+                    post.scheduledFor instanceof Date &&
+                    isSameDay(post.scheduledFor, date) &&
+                    post.scheduledFor.getHours() === hour
+                ).map((post): Post & { mediaUrls: string[] } => ({
+                  ...post,
+                  mediaUrls: post.media || []
+                }));
 
                 return (
                   <CalendarTimeSlot

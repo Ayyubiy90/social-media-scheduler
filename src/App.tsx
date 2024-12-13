@@ -5,17 +5,22 @@ import {
   Route,
   Navigate,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 import { UserProvider, useUser } from "./contexts/UserContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { DatabaseProvider } from "./contexts/DatabaseContext";
 import { PostProvider } from "./contexts/PostContext";
 import { AnalyticsProvider } from "./contexts/AnalyticsContext";
+import { SocialMediaProvider } from "./contexts/SocialMediaContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import CreatePost from "./pages/CreatePost";
 import Analytics from "./pages/Analytics";
+import { Calendar } from "./pages/Calendar";
+import Settings from "./pages/Settings";
+import { NotificationProvider } from "./contexts/NotificationContext";
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -114,6 +119,30 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/calendar"
+        element={
+          <ProtectedRoute>
+            <Calendar />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/logout"
+        element={
+          <ProtectedRoute>
+            <LogoutHandler />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Default Route - Redirect to login if not authenticated, dashboard if authenticated */}
       <Route
@@ -133,6 +162,22 @@ const AppRoutes = () => {
   );
 };
 
+// Logout handler component
+const LogoutHandler = () => {
+  const { logout } = useUser();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const handleLogout = async () => {
+      await logout();
+      navigate('/login', { replace: true });
+    };
+    handleLogout();
+  }, [logout, navigate]);
+
+  return null;
+};
+
 const App = () => {
   return (
     <ThemeProvider>
@@ -140,11 +185,15 @@ const App = () => {
         <DatabaseProvider>
           <PostProvider>
             <AnalyticsProvider>
-              <Router>
-                <div className="min-h-screen bg-white dark:bg-gray-900">
-                  <AppRoutes />
-                </div>
-              </Router>
+              <SocialMediaProvider>
+                <NotificationProvider>
+                  <Router>
+                    <div className="min-h-screen bg-white dark:bg-gray-900">
+                      <AppRoutes />
+                    </div>
+                  </Router>
+                </NotificationProvider>
+              </SocialMediaProvider>
             </AnalyticsProvider>
           </PostProvider>
         </DatabaseProvider>
