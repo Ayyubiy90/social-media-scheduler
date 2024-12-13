@@ -102,6 +102,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     if (onClick) {
       onClick();
     }
+    onClose();
   };
 
   return (
