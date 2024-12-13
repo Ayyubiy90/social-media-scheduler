@@ -1,7 +1,9 @@
 import React from "react";
-import { Bell, Settings, ThumbsUp, X } from "lucide-react";
+import { Bell, Settings, ThumbsUp, X, BarChart2, Calendar, FilePlus2, LogOut } from "lucide-react";
 import { useNotifications } from '../contexts/NotificationContext';
 import { ThemeToggle } from './ThemeToggle';
+import { useLocation } from 'wouter';
+import { useUser } from '../contexts/UserContext';
 
 interface SidebarProps {
   onClose: () => void;
@@ -9,8 +11,30 @@ interface SidebarProps {
 
 export function Sidebar({ onClose }: SidebarProps) {
   const { unreadCount } = useNotifications();
+  const [, setLocation] = useLocation();
+  const { logout } = useUser();
 
   const navItems = [
+    {
+      icon: BarChart2,
+      label: "Analytics",
+      onClick: () => setLocation("/analytics"),
+    },
+    {
+      icon: Calendar,
+      label: "Calendar",
+      onClick: () => setLocation("/calendar"),
+    },
+    {
+      icon: FilePlus2,
+      label: "Create Post",
+      onClick: () => setLocation("/create-post"),
+    },
+    {
+      icon: Settings,
+      label: "Settings",
+      onClick: () => setLocation("/settings"),
+    },
     {
       icon: Bell,
       label: "Notifications",
@@ -18,14 +42,17 @@ export function Sidebar({ onClose }: SidebarProps) {
       onClick: () => console.log("Notifications clicked"),
     },
     {
-      icon: Settings,
-      label: "Settings",
-      onClick: () => console.log("Settings clicked"),
-    },
-    {
       icon: ThumbsUp,
       label: "Theme",
       component: ThemeToggle,
+    },
+    {
+      icon: LogOut,
+      label: "Logout",
+      onClick: () => {
+        logout();
+        setLocation("/login");
+      },
     },
   ];
 

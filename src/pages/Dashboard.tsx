@@ -69,7 +69,7 @@ const Dashboard = () => {
                 </h1>
                 <ThemeToggle />
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-4">
                 <button
                   onClick={() => navigate("/analytics")}
                   className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
@@ -99,6 +99,14 @@ const Dashboard = () => {
                   className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                   <LogOut className="w-4 h-4" />
                   Logout
+                </button>
+              </div>
+              <div className="md:hidden">
+                <button
+                  onClick={() => navigate("/create-post")}
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  <FilePlus2 className="w-4 h-4" />
+                  Create
                 </button>
               </div>
             </div>
