@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Sidebar } from './Sidebar';
-import { TopNav } from './TopNav';
-import { useLocation } from 'wouter';
+import React, { useState, useEffect } from "react";
+import { Sidebar } from "./Sidebar";
+import { TopNav } from "./TopNav";
+import { useLocation } from "wouter";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,75 +9,57 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768); // Using md breakpoint
   const [, setLocation] = useLocation();
 
+  // Close sidebar on route change
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [setLocation]);
 
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (!mobile && isSidebarOpen) {
-        setIsSidebarOpen(false);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isSidebarOpen]);
-
+  // Handle body scroll when sidebar is open
   useEffect(() => {
     if (isSidebarOpen) {
-      document.body.style.overflow = 'hidden';
-      document.body.classList.add('mobile-menu-open');
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = '';
-      document.body.classList.remove('mobile-menu-open');
+      document.body.style.overflow = "";
     }
     return () => {
-      document.body.style.overflow = '';
-      document.body.classList.remove('mobile-menu-open');
+      document.body.style.overflow = "";
     };
   }, [isSidebarOpen]);
+
+  // Close sidebar when clicking outside
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      setIsSidebarOpen(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      <TopNav onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
-      
-      <div className="flex pt-16">
-        {/* Overlay */}
-        {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-gray-600 bg-opacity-75 z-20 md:hidden transition-opacity duration-300 ease-in-out"
-            onClick={() => setIsSidebarOpen(false)}
-            aria-hidden="true"
-          />
-        )}
+      <TopNav onSidebarToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
 
-        {/* Sidebar */}
+      <div className="flex pt-16 relative">
+        {/* Main Content */}
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
+          <div className="max-w-[1400px] mx-auto">{children}</div>
+        </main>
+
+        {/* Sidebar Overlay */}
         <div
-          className={`fixed inset-y-0 left-0 transform ${
-            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-30 md:z-0 top-0 w-64 sm:w-72 md:w-64
-          ${isSidebarOpen ? 'shadow-xl' : ''}`}
-        >
-          <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
-            <Sidebar 
-              onClose={() => setIsSidebarOpen(false)} 
-              isMobile={isMobile}
-            />
+          onClick={handleOverlayClick}
+          className={`fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300 z-40 ${
+            isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}>
+          {/* Sliding Sidebar */}
+          <div
+            className={`absolute top-0 right-0 h-full w-72 transform transition-transform duration-300 ease-in-out ${
+              isSidebarOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+            onClick={(e) => e.stopPropagation()}>
+            <Sidebar onClose={() => setIsSidebarOpen(false)} />
           </div>
         </div>
-
-        {/* Main Content */}
-        <main className="flex-1 px-4 sm:px-6 md:px-8 py-6 overflow-x-hidden">
-          <div className="max-w-[1400px] mx-auto">
-            {children}
-          </div>
-        </main>
       </div>
     </div>
   );
