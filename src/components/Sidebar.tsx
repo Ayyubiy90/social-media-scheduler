@@ -34,6 +34,14 @@ export function Sidebar({ onClose }: SidebarProps) {
   const [location, setLocation] = useLocation();
   const { logout } = useUser();
 
+  const handleNotificationsClick = () => {
+    // Only navigate to notifications page on mobile
+    if (window.innerWidth < 768) {
+      setLocation("/notifications");
+      onClose();
+    }
+  };
+
   const navItems: NavItem[] = [
     {
       icon: LayoutDashboard,
@@ -61,16 +69,18 @@ export function Sidebar({ onClose }: SidebarProps) {
       className: "block md:hidden", // Show on mobile, hide on desktop
     },
     {
+      icon: Bell,
+      label: "Notifications",
+      badge: unreadCount,
+      onClick: handleNotificationsClick,
+      path: "/notifications",
+      className: "block md:hidden", // Show on mobile, hide on desktop
+    },
+    {
       icon: Settings,
       label: "Settings",
       onClick: () => setLocation("/settings"),
       path: "/settings",
-    },
-    {
-      icon: Bell,
-      label: "Notifications",
-      badge: unreadCount,
-      onClick: () => console.log("Notifications clicked"),
     },
     {
       icon: Moon,
@@ -92,7 +102,6 @@ export function Sidebar({ onClose }: SidebarProps) {
     if (onClick) {
       onClick();
     }
-    onClose();
   };
 
   return (
@@ -116,7 +125,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       <div className="flex-1 overflow-y-auto overscroll-contain">
         <nav className="px-2 py-4 space-y-1">
           {navItems.map((item, index) => (
-            <div key={index} className="w-full">
+            <div key={index} className={item.className || "w-full"}>
               {item.component ? (
                 <div className="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300">
                   <item.icon className="h-5 w-5 mr-3" />
@@ -130,7 +139,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                     item.path && location === item.path
                       ? "bg-gray-100 dark:bg-gray-700"
                       : ""
-                  } ${item.className || ""}`}>
+                  }`}>
                   <item.icon className="h-5 w-5 mr-3" />
                   <span className="flex-grow">{item.label}</span>
                   {item.badge && item.badge > 0 && (

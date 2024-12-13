@@ -20,6 +20,7 @@ import CreatePost from "./pages/CreatePost";
 import Analytics from "./pages/Analytics";
 import { Calendar } from "./pages/Calendar";
 import Settings from "./pages/Settings";
+import NotificationsPage from "./pages/Notifications";
 import { NotificationProvider } from "./contexts/NotificationContext";
 
 // Protected Route wrapper
@@ -136,6 +137,14 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute>
+            <NotificationsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/logout"
         element={
           <ProtectedRoute>
@@ -170,7 +179,7 @@ const LogoutHandler = () => {
   React.useEffect(() => {
     const handleLogout = async () => {
       await logout();
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
     };
     handleLogout();
   }, [logout, navigate]);
