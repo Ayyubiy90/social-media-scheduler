@@ -16,8 +16,11 @@ const mockPostService = {
   createPost: jest.fn().mockImplementation((userId, postData) => {
     return Promise.resolve({
       id: 'test-post-id',
-      ...postData,
-      userId
+      userId,
+      content: postData.content,
+      platforms: [...postData.platforms], // Ensure platforms array is properly copied
+      scheduledFor: postData.scheduledFor,
+      media: postData.media
     });
   }),
   getPosts: jest.fn().mockImplementation((userId, platform) => {

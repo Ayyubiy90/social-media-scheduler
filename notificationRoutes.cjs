@@ -36,14 +36,8 @@ router.put('/settings', verifyToken, verifySession, async (req, res) => {
 router.get('/', verifyToken, verifySession, async (req, res) => {
   try {
     const { uid } = req.user;
-    const { read } = req.query;
-    let notifications = await NotificationService.getUserNotifications(uid);
-    
-    if (read === 'true' || read === 'false') {
-      const readBoolean = read === 'true';
-      notifications = notifications.filter(n => n.read === readBoolean);
-    }
-    
+    const { read, type, limit = 20 } = req.query;
+    let notifications = await NotificationService.getUserNotifications(uid, { read: read === 'true' ? true : read === 'false' ? false : undefined, type, limit: parseInt(limit) });
     res.json(notifications);
   } catch (error) {
     console.error("Error getting notifications:", error.message);

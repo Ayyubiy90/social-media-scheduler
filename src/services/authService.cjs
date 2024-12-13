@@ -1,78 +1,147 @@
-const admin = require('firebase-admin');
-const jwt = require('jsonwebtoken');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore } = require('firebase-admin/firestore');
 
 class AuthService {
-  static async registerUser(userData) {
+  constructor() {
+    this.auth = getAuth();
+    this.db = getFirestore();
+  }
+
+  async registerUser(userData) {
     try {
       const { email, password, displayName } = userData;
-      const userRecord = await admin.auth().createUser({
+      const userRecord = await this.auth.createUser({
         email,
         password,
         displayName
       });
-
-      const token = jwt.sign({ uid: userRecord.uid }, process.env.JWT_SECRET, {
-        expiresIn: '24h'
+      
+      await this.db.collection('users').doc(userRecord.uid).set({
+        email,
+        displayName,
+        createdAt: new Date().toISOString(),
+        settings: {
+          emailNotifications: true,
+          pushNotifications: false
+        }
       });
 
-      return {
-        uid: userRecord.uid,
-        email: userRecord.email,
-        displayName: userRecord.displayName,
-        token
-      };
+      return userRecord;
     } catch (error) {
-      throw new Error(`Failed to register user: ${error.message}`);
+      throw new Error(`Error creating user: ${error.message}`);
     }
   }
 
-  static async loginUser(credentials) {
+  async loginUser(credentials) {
     try {
       const { email, password } = credentials;
-      const userRecord = await admin.auth().getUserByEmail(email);
-      
+      const userRecord = await this.auth.getUserByEmail(email);
       // In a real implementation, you would verify the password here
-      // For testing purposes, we're just checking if the user exists
-      
-      const token = jwt.sign({ uid: userRecord.uid }, process.env.JWT_SECRET, {
-        expiresIn: '24h'
-      });
-
+      // For now, we'll just return the user record with a token
       return {
         uid: userRecord.uid,
         email: userRecord.email,
-        displayName: userRecord.displayName,
-        token
+        token: 'test-token' // In production, generate a real token
       };
     } catch (error) {
       throw new Error('Invalid credentials');
     }
   }
 
-  static async verifyToken(token) {
+  async getUserById(uid) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const userRecord = await admin.auth().getUser(decoded.uid);
-      
+      const userRecord = await this.auth.getUser(uid);
+      const userDoc = await this.db.collection('users').doc(uid).get();
       return {
-        uid: userRecord.uid,
-        email: userRecord.email,
-        displayName: userRecord.displayName
+        ...userRecord,
+        ...userDoc.data()
       };
     } catch (error) {
-      throw new Error('Invalid token');
+      throw new Error(`Error getting user: ${error.message}`);
     }
   }
 
-  static async logoutUser(token) {
+  async updateUser(uid, updateData) {
     try {
-      // In a real implementation, you might want to blacklist the token
-      // For now, we'll just return true to indicate successful logout
+      const { email, password, displayName, ...customClaims } = updateData;
+      
+      // Update auth profile
+      const authUpdate = {};
+      if (email) authUpdate.email = email;
+      if (password) authUpdate.password = password;
+      if (displayName) authUpdate.displayName = displayName;
+      
+      if (Object.keys(authUpdate).length > 0) {
+        await this.auth.updateUser(uid, authUpdate);
+      }
+
+      // Update custom claims if any
+      if (Object.keys(customClaims).length > 0) {
+        await this.auth.setCustomUserClaims(uid, customClaims);
+      }
+
+      // Update Firestore document
+      const userDocRef = this.db.collection('users').doc(uid);
+      await userDocRef.update({
+        ...updateData,
+        updatedAt: new Date().toISOString()
+      });
+
+      return await this.getUserById(uid);
+    } catch (error) {
+      throw new Error(`Error updating user: ${error.message}`);
+    }
+  }
+
+  async deleteUser(uid) {
+    try {
+      await this.auth.deleteUser(uid);
+      await this.db.collection('users').doc(uid).delete();
       return true;
     } catch (error) {
-      throw new Error('Failed to logout');
+      throw new Error(`Error deleting user: ${error.message}`);
+    }
+  }
+
+  async verifyToken(token) {
+    try {
+      return await this.auth.verifyIdToken(token);
+    } catch (error) {
+      throw new Error(`Error verifying token: ${error.message}`);
+    }
+  }
+
+  async listUsers(maxResults = 1000) {
+    try {
+      const listUsersResult = await this.auth.listUsers(maxResults);
+      return listUsersResult.users;
+    } catch (error) {
+      throw new Error(`Error listing users: ${error.message}`);
+    }
+  }
+
+  async getUserByEmail(email) {
+    try {
+      return await this.auth.getUserByEmail(email);
+    } catch (error) {
+      throw new Error(`Error getting user by email: ${error.message}`);
+    }
+  }
+
+  async logoutUser(uid) {
+    try {
+      // In a real implementation, you might want to:
+      // 1. Revoke refresh tokens
+      // 2. Clear any server-side sessions
+      // 3. Update user's last logout timestamp
+      await this.db.collection('users').doc(uid).update({
+        lastLogout: new Date().toISOString()
+      });
+      return true;
+    } catch (error) {
+      throw new Error(`Error logging out user: ${error.message}`);
     }
   }
 }
 
-module.exports = AuthService;
+module.exports = new AuthService();

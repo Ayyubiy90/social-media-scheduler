@@ -1,21 +1,35 @@
 // Mock Notification Service
 const mockNotificationService = {
-  getUserNotifications: jest.fn().mockResolvedValue([
-    {
-      id: '1',
-      type: 'post_scheduled',
-      message: 'Post scheduled for publishing',
-      read: false,
-      createdAt: '2024-03-10T10:00:00Z'
-    },
-    {
-      id: '2',
-      type: 'post_published',
-      message: 'Post published successfully',
-      read: true,
-      createdAt: '2024-03-09T15:00:00Z'
+  getUserNotifications: jest.fn().mockImplementation((userId, options = {}) => {
+    const notifications = [
+      {
+        id: '1',
+        type: 'post_scheduled',
+        message: 'Post scheduled for publishing',
+        read: false,
+        createdAt: '2024-03-10T10:00:00Z'
+      },
+      {
+        id: '2',
+        type: 'post_published',
+        message: 'Post published successfully',
+        read: true,
+        createdAt: '2024-03-09T15:00:00Z'
+      }
+    ];
+
+    let filtered = [...notifications];
+    
+    if (options.read !== undefined) {
+      filtered = filtered.filter(n => n.read === options.read);
     }
-  ]),
+    
+    if (options.type) {
+      filtered = filtered.filter(n => n.type === options.type);
+    }
+    
+    return Promise.resolve(filtered.slice(0, options.limit || 20));
+  }),
   markNotificationAsRead: jest.fn().mockImplementation(async (notificationId) => {
     if (notificationId === 'non-existent-id') {
       throw new Error('Notification not found');

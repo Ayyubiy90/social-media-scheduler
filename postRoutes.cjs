@@ -129,13 +129,13 @@ router.post('/:id/schedule', verifyToken, verifySession, async (req, res) => {
 router.post('/:id/publish', verifyToken, verifySession, async (req, res) => {
   try {
     const { platforms } = req.body;
-
     const validPlatforms = ['twitter', 'facebook', 'linkedin'];
-    if (!platforms || !Array.isArray(platforms)) {
-      return res.status(400).json({ error: 'Invalid platforms' });
-    }
 
     // Validate platforms
+    if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
+      return res.status(400).json({ error: 'Invalid platforms: must be a non-empty array' });
+    }
+
     const invalidPlatforms = platforms.filter(p => !validPlatforms.includes(p));
     if (invalidPlatforms.length > 0) {
       return res.status(400).json({ error: `Invalid platforms: ${invalidPlatforms.join(', ')}` });

@@ -37,7 +37,7 @@ describe('Notification Routes', () => {
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body[0]).toHaveProperty('id');
       expect(response.body[0]).toHaveProperty('message');
-      expect(mockNotificationService.getUserNotifications).toHaveBeenCalledWith('test-user-id');
+      expect(mockNotificationService.getUserNotifications).toHaveBeenCalledWith('test-user-id', expect.any(Object));
     });
 
     it('should filter notifications by read status', async () => {
