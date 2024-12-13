@@ -11,9 +11,10 @@ export function Layout({ children }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [, setLocation] = useLocation();
 
-  // Debug log for sidebar state
+  // Enhanced debug logging
   useEffect(() => {
-    console.log("Sidebar state:", isSidebarOpen);
+    console.log("Sidebar state changed:", isSidebarOpen);
+    console.log("Current viewport width:", window.innerWidth);
   }, [isSidebarOpen]);
 
   // Close sidebar on route change
@@ -33,14 +34,17 @@ export function Layout({ children }: LayoutProps) {
     };
   }, [isSidebarOpen]);
 
+  const handleSidebarToggle = () => {
+    console.log("Toggle clicked, current state:", isSidebarOpen);
+    console.log("Toggling sidebar to:", !isSidebarOpen);
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   return (
     <div className="relative min-h-screen bg-background">
       {/* Fixed TopNav */}
       <TopNav
-        onSidebarToggle={() => {
-          console.log("Toggle clicked, current state:", isSidebarOpen);
-          setIsSidebarOpen(!isSidebarOpen);
-        }}
+        onSidebarToggle={handleSidebarToggle}
         isSidebarOpen={isSidebarOpen}
       />
 
@@ -54,7 +58,10 @@ export function Layout({ children }: LayoutProps) {
         className={`fixed inset-0 bg-black transition-opacity duration-300 z-[90] ${
           isSidebarOpen ? "opacity-50 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
-        onClick={() => setIsSidebarOpen(false)}
+        onClick={() => {
+          console.log("Overlay clicked, closing sidebar");
+          setIsSidebarOpen(false);
+        }}
       />
 
       {/* Sidebar */}

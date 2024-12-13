@@ -27,7 +27,7 @@
     "express-session": "^1.18.1",
     "firebase": "^11.0.2",
     "firebase-admin": "^13.0.1",
-    "lucide-react": "^0.344.0",
+    "lucide-react": "^0.468.0",
     "morgan": "^1.10.0",
     "passport": "^0.7.0",
     "passport-facebook": "^3.0.0",
