@@ -11,7 +11,7 @@ export function NotificationsPage() {
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 md:hidden">
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow"> 
               {/* Header */}
               <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center">
