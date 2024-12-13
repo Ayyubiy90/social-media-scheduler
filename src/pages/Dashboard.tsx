@@ -101,14 +101,6 @@ const Dashboard = () => {
                   Logout
                 </button>
               </div>
-              <div className="md:hidden">
-                <button
-                  onClick={() => navigate("/create-post")}
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                  <FilePlus2 className="w-4 h-4" />
-                  Create
-                </button>
-              </div>
             </div>
 
             <div className="text-gray-600 dark:text-gray-300">

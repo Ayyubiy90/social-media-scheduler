@@ -1,18 +1,19 @@
-import React from 'react';
-import { Menu, CalendarCheck } from 'lucide-react';
-import { useUser } from '../contexts/UserContext';
+import React from "react";
+import { PanelRightOpen, PanelRightClose, CalendarCheck } from "lucide-react";
+import { useUser } from "../contexts/UserContext";
 
 interface TopNavProps {
   onSidebarToggle: () => void;
+  isSidebarOpen?: boolean;
 }
 
-export function TopNav({ onSidebarToggle }: TopNavProps) {
+export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
   const { user } = useUser();
   const defaultAvatar = "https://via.placeholder.com/32";
 
   const handleMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('Menu button clicked');
+    console.log("Menu button clicked");
     onSidebarToggle();
   };
 
@@ -27,19 +28,26 @@ export function TopNav({ onSidebarToggle }: TopNavProps) {
           </span>
         </div>
 
-        {/* Right section with avatar and menu button */}
-        <div className="flex items-center space-x-4">
-          <img
-            className="h-8 w-8 rounded-full object-cover"
-            src={user?.photoURL || defaultAvatar}
-            alt={`${user?.displayName || 'User'}'s avatar`}
-          />
+        {/* Right section with menu button */}
+        <div className="flex items-center">
+          {/* Avatar - only visible on desktop */}
+          <div className="hidden md:block">
+            <img
+              className="h-8 w-8 rounded-full object-cover"
+              src={user?.photoURL || defaultAvatar}
+              alt={`${user?.displayName || "User"}'s avatar`}
+            />
+          </div>
+          {/* Menu button - always visible */}
           <button
             onClick={handleMenuClick}
-            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-            aria-label="Toggle navigation"
-          >
-            <Menu className="h-6 w-6 text-gray-500 dark:text-gray-200" />
+            className="fixed right-6 top-4 z-50 p-3 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 shadow-xl border border-gray-200 dark:border-gray-600"
+            aria-label="Toggle navigation">
+            {isSidebarOpen ? (
+              <PanelRightClose className="w-8 h-8" />
+            ) : (
+              <PanelRightOpen className="w-8 h-8" />
+            )}
           </button>
         </div>
       </div>
