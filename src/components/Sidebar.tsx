@@ -35,7 +35,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   const { logout } = useUser();
 
   const handleNotificationsClick = () => {
-    // Only navigate to notifications page on mobile
+    // Navigate to notifications page on mobile
     if (window.innerWidth < 768) {
       setLocation("/notifications");
       onClose();
