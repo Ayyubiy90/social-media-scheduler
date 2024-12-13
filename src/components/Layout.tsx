@@ -34,44 +34,48 @@ export function Layout({ children }: LayoutProps) {
   }, [isSidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background">
+      {/* Fixed TopNav */}
       <TopNav onSidebarToggle={() => {
         console.log('Toggle clicked, current state:', isSidebarOpen);
         setIsSidebarOpen(!isSidebarOpen);
       }} />
       
-      <div className="flex pt-16 relative">
-        {/* Main Content */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
-          <div className="max-w-[1400px] mx-auto">
-            {children}
-          </div>
-        </main>
+      {/* Main Content */}
+      <main className="pt-16 px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-[1400px] mx-auto">
+          {children}
+        </div>
+      </main>
 
-        {/* Fixed Overlay */}
+      {/* Sidebar Container - Always present but transformed */}
+      <div className="fixed inset-0 pointer-events-none z-50">
+        {/* Overlay - Only clickable when sidebar is open */}
         <div 
-          className={`fixed inset-0 bg-black transition-opacity duration-300 ${
+          className={`absolute inset-0 bg-black transition-opacity duration-300 ${
             isSidebarOpen 
-              ? 'bg-opacity-50 z-40' 
-              : 'bg-opacity-0 pointer-events-none -z-10'
+              ? 'opacity-50 pointer-events-auto' 
+              : 'opacity-0'
           }`}
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={() => {
+            console.log('Overlay clicked');
+            setIsSidebarOpen(false);
+          }}
         />
 
-        {/* Fixed Sidebar */}
+        {/* Sidebar - Always present but transformed */}
         <div 
-          className={`fixed top-0 right-0 h-full w-80 bg-white dark:bg-gray-800 transform transition-transform duration-300 ease-out z-50 ${
+          className={`absolute top-0 right-0 h-full w-80 pointer-events-auto transform transition-transform duration-300 ease-out ${
             isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
-          style={{ 
-            boxShadow: isSidebarOpen ? '-4px 0 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
-            marginTop: '64px' // height of TopNav
-          }}
+          style={{ marginTop: '64px' }} // Match TopNav height
         >
-          <Sidebar onClose={() => {
-            console.log('Sidebar close clicked');
-            setIsSidebarOpen(false);
-          }} />
+          <div className="h-full bg-white dark:bg-gray-800 shadow-lg">
+            <Sidebar onClose={() => {
+              console.log('Sidebar close clicked');
+              setIsSidebarOpen(false);
+            }} />
+          </div>
         </div>
       </div>
     </div>
