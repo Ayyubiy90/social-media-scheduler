@@ -2,24 +2,12 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { usePost } from "../contexts/PostContext";
-import { ThemeToggle } from "../components/ThemeToggle";
 import { Layout } from "../components/Layout";
-import {
-  LayoutDashboard,
-  Copy,
-  FilePlus2,
-  LogOut,
-  KeyRound,
-  CalendarCheck,
-  Archive,
-  BarChart2,
-  Calendar,
-  Settings,
-} from "lucide-react";
+import { LayoutDashboard, KeyRound, Copy, CalendarCheck, Archive } from "lucide-react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, logout } = useUser();
+  const { user } = useUser();
   const { drafts, scheduledPosts, loading, error, fetchPosts, deletePost } =
     usePost();
   const [copied, setCopied] = React.useState(false);
@@ -27,11 +15,6 @@ const Dashboard = () => {
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
 
   const copyToClipboard = async () => {
     if (user?.token) {
@@ -66,45 +49,10 @@ const Dashboard = () => {
           <div className="px-4 py-6 sm:px-0">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-4">
-                  <h1 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                    <LayoutDashboard className="w-6 h-6" />
-                    Dashboard
-                  </h1>
-                  <ThemeToggle />
-                </div>
-                <div className="hidden md:flex items-center space-x-4">
-                  <button
-                    onClick={() => navigate("/analytics")}
-                    className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    <BarChart2 className="w-4 h-4" />
-                    Analytics
-                  </button>
-                  <button
-                    onClick={() => navigate("/calendar")}
-                    className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                    <Calendar className="w-4 h-4" />
-                    Calendar
-                  </button>
-                  <button
-                    onClick={() => navigate("/create-post")}
-                    className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <FilePlus2 className="w-4 h-4" />
-                    Create Post
-                  </button>
-                  <button
-                    onClick={() => navigate("/settings")}
-                    className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
-                    <Settings className="w-4 h-4" />
-                    Settings
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                    <LogOut className="w-4 h-4" />
-                    Logout
-                  </button>
-                </div>
+                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <LayoutDashboard className="w-6 h-6" />
+                  Dashboard
+                </h1>
               </div>
 
               <div className="text-gray-600 dark:text-gray-300">

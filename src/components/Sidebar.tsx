@@ -1,5 +1,14 @@
 import React from "react";
-import { Bell, Settings, ThumbsUp, BarChart2, Calendar, FilePlus2, LogOut } from "lucide-react";
+import { 
+  Bell, 
+  Settings, 
+  Moon, 
+  BarChart2, 
+  Calendar, 
+  FilePlus2, 
+  LogOut,
+  LayoutDashboard 
+} from "lucide-react";
 import { useNotifications } from '../contexts/NotificationContext';
 import { ThemeToggle } from './ThemeToggle';
 import { useLocation } from 'wouter';
@@ -12,6 +21,7 @@ interface NavItem {
   badge?: number;
   component?: React.ElementType;
   className?: string;
+  path?: string;
 }
 
 interface SidebarProps {
@@ -20,30 +30,40 @@ interface SidebarProps {
 
 export function Sidebar({ onClose }: SidebarProps) {
   const { unreadCount } = useNotifications();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { logout } = useUser();
 
   const navItems: NavItem[] = [
     {
+      icon: LayoutDashboard,
+      label: "Dashboard",
+      onClick: () => setLocation("/dashboard"),
+      path: "/dashboard"
+    },
+    {
       icon: BarChart2,
       label: "Analytics",
       onClick: () => setLocation("/analytics"),
+      path: "/analytics"
     },
     {
       icon: Calendar,
       label: "Calendar",
       onClick: () => setLocation("/calendar"),
+      path: "/calendar"
     },
     {
       icon: FilePlus2,
       label: "Create Post",
       onClick: () => setLocation("/create-post"),
+      path: "/create-post",
       className: "block md:hidden", // Show on mobile, hide on desktop
     },
     {
       icon: Settings,
       label: "Settings",
       onClick: () => setLocation("/settings"),
+      path: "/settings"
     },
     {
       icon: Bell,
@@ -52,7 +72,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       onClick: () => console.log("Notifications clicked"),
     },
     {
-      icon: ThumbsUp,
+      icon: Moon,
       label: "Theme",
       component: ThemeToggle,
     },
@@ -85,7 +105,7 @@ export function Sidebar({ onClose }: SidebarProps) {
 
       {/* Navigation Items */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
-        <nav className="px-2 py-4 space-y-2">
+        <nav className="px-2 py-4 space-y-1">
           {navItems.map((item, index) => (
             <div key={index} className="w-full">
               {item.component ? (
@@ -97,7 +117,11 @@ export function Sidebar({ onClose }: SidebarProps) {
               ) : (
                 <button
                   onClick={() => handleItemClick(item.onClick)}
-                  className={`w-full flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors ${item.className || ''}`}
+                  className={`w-full flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors ${
+                    item.path && location === item.path
+                      ? "bg-gray-100 dark:bg-gray-700"
+                      : ""
+                  } ${item.className || ''}`}
                 >
                   <item.icon className="h-5 w-5 mr-3" />
                   <span className="flex-grow">{item.label}</span>
