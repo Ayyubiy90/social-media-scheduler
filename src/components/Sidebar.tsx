@@ -1,18 +1,19 @@
 import React from "react";
-import { 
-  Bell, 
-  Settings, 
-  Moon, 
-  BarChart2, 
-  Calendar, 
-  FilePlus2, 
+import {
+  Bell,
+  Settings,
+  Moon,
+  BarChart2,
+  Calendar,
+  FilePlus2,
   LogOut,
-  LayoutDashboard 
+  LayoutDashboard,
+  PanelRightClose,
 } from "lucide-react";
-import { useNotifications } from '../contexts/NotificationContext';
-import { ThemeToggle } from './ThemeToggle';
-import { useLocation } from 'wouter';
-import { useUser } from '../contexts/UserContext';
+import { useNotifications } from "../contexts/NotificationContext";
+import { ThemeToggle } from "./ThemeToggle";
+import { useLocation } from "wouter";
+import { useUser } from "../contexts/UserContext";
 
 interface NavItem {
   icon: React.ElementType;
@@ -38,19 +39,19 @@ export function Sidebar({ onClose }: SidebarProps) {
       icon: LayoutDashboard,
       label: "Dashboard",
       onClick: () => setLocation("/dashboard"),
-      path: "/dashboard"
+      path: "/dashboard",
     },
     {
       icon: BarChart2,
       label: "Analytics",
       onClick: () => setLocation("/analytics"),
-      path: "/analytics"
+      path: "/analytics",
     },
     {
       icon: Calendar,
       label: "Calendar",
       onClick: () => setLocation("/calendar"),
-      path: "/calendar"
+      path: "/calendar",
     },
     {
       icon: FilePlus2,
@@ -63,7 +64,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       icon: Settings,
       label: "Settings",
       onClick: () => setLocation("/settings"),
-      path: "/settings"
+      path: "/settings",
     },
     {
       icon: Bell,
@@ -87,7 +88,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   ];
 
   const handleItemClick = (onClick?: () => void) => {
-    console.log('Item clicked');
+    console.log("Item clicked");
     if (onClick) {
       onClick();
     }
@@ -95,12 +96,20 @@ export function Sidebar({ onClose }: SidebarProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800 shadow-lg overflow-hidden mt-16">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
       {/* Header */}
       <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Menu
-        </h2>
+        <div className="flex items-center justify-between w-full">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Menu
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Close menu">
+            <PanelRightClose className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       {/* Navigation Items */}
@@ -121,8 +130,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                     item.path && location === item.path
                       ? "bg-gray-100 dark:bg-gray-700"
                       : ""
-                  } ${item.className || ''}`}
-                >
+                  } ${item.className || ""}`}>
                   <item.icon className="h-5 w-5 mr-3" />
                   <span className="flex-grow">{item.label}</span>
                   {item.badge && item.badge > 0 && (

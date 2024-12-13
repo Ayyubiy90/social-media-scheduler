@@ -11,10 +11,9 @@ export function Layout({ children }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [, setLocation] = useLocation();
 
-  // Enhanced debug logging
+  // Debug log for sidebar state
   useEffect(() => {
-    console.log("Sidebar state changed:", isSidebarOpen);
-    console.log("Current viewport width:", window.innerWidth);
+    console.log("Sidebar state:", isSidebarOpen);
   }, [isSidebarOpen]);
 
   // Close sidebar on route change
@@ -34,17 +33,14 @@ export function Layout({ children }: LayoutProps) {
     };
   }, [isSidebarOpen]);
 
-  const handleSidebarToggle = () => {
-    console.log("Toggle clicked, current state:", isSidebarOpen);
-    console.log("Toggling sidebar to:", !isSidebarOpen);
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
   return (
     <div className="relative min-h-screen bg-background">
       {/* Fixed TopNav */}
       <TopNav
-        onSidebarToggle={handleSidebarToggle}
+        onSidebarToggle={() => {
+          console.log("Toggle clicked, current state:", isSidebarOpen);
+          setIsSidebarOpen(!isSidebarOpen);
+        }}
         isSidebarOpen={isSidebarOpen}
       />
 
@@ -56,20 +52,18 @@ export function Layout({ children }: LayoutProps) {
       {/* Overlay */}
       <div
         className={`fixed inset-0 bg-black transition-opacity duration-300 z-[90] ${
-          isSidebarOpen ? "opacity-50 pointer-events-auto" : "opacity-0 pointer-events-none"
+          isSidebarOpen
+            ? "opacity-50 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
         }`}
-        onClick={() => {
-          console.log("Overlay clicked, closing sidebar");
-          setIsSidebarOpen(false);
-        }}
+        onClick={() => setIsSidebarOpen(false)}
       />
 
       {/* Sidebar */}
       <div
         className={`fixed top-0 right-0 h-full w-[280px] sm:w-80 z-[100] transform transition-transform duration-300 ease-out ${
           isSidebarOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
+        }`}>
         <Sidebar
           onClose={() => {
             console.log("Sidebar close clicked");
