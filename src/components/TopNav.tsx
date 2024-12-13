@@ -1,18 +1,19 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  PanelRightOpen,
-  PanelRightClose,
+import { 
+  PanelRightOpen, 
+  PanelRightClose, 
   CalendarCheck,
   LayoutDashboard,
   BarChart2,
   Calendar,
   FilePlus2,
   Settings,
-  Bell,
+  Bell
 } from "lucide-react";
 import { useUser } from "../contexts/UserContext";
-import { useNotifications } from "../contexts/NotificationContext";
+import { useNotifications } from '../contexts/NotificationContext';
+import { ThemeToggle } from './ThemeToggle';
 
 interface TopNavProps {
   onSidebarToggle: () => void;
@@ -78,8 +79,14 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
 
         {/* Right section */}
         <div className="flex items-center space-x-4">
+          {/* Theme Toggle - visible on desktop */}
+          <div className="hidden md:flex items-center">
+            <ThemeToggle />
+          </div>
+
           {/* Notification button - visible on desktop */}
-          <button className="hidden md:inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative">
+          <button
+            className="hidden md:inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative">
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
