@@ -105,7 +105,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           </h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 transition-colors"
             aria-label="Close menu">
             <PanelRightClose className="h-5 w-5" />
           </button>
