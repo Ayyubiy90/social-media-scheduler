@@ -78,7 +78,15 @@ function ProfileIcon() {
       <ProfileDialog
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
-        user={user || { uid: "", displayName: null, email: null, photoURL: null, token: "" }}
+        user={
+          user || {
+            uid: "",
+            displayName: null,
+            email: null,
+            photoURL: null,
+            token: "",
+          }
+        }
       />
     </>
   );
@@ -215,13 +223,6 @@ export function Sidebar({ onClose }: SidebarProps) {
             </div>
           ))}
         </nav>
-      </div>
-
-      {/* Footer */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          © 2024 Social Media Scheduler
-        </p>
       </div>
     </div>
   );

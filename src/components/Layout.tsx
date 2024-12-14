@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
 import { useLocation } from "wouter";
+import { Footer } from "./Footer";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -45,8 +46,9 @@ export function Layout({ children }: LayoutProps) {
       />
 
       {/* Main Content */}
-      <main className="pt-16 px-4 sm:px-6 lg:px-8 py-6">
-        <div className="max-w-[1400px] mx-auto">{children}</div>
+      <main className="pt-16">
+        <div className="h-full">{children}</div>
+        <Footer />
       </main>
 
       {/* Overlay */}
