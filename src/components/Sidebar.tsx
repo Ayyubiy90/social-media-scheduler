@@ -154,20 +154,12 @@ export function Sidebar({ onClose }: SidebarProps) {
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
-      {/* Header with Profile */}
+      {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <div className="flex items-center justify-between w-full mb-4">
-          <div className="flex items-center space-x-3">
-            <ProfileIcon />
-            <div>
-              <h2 className="text-sm font-medium text-gray-900 dark:text-white">
-                {user?.displayName || "User"}
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {user?.email}
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Menu
+          </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 transition-colors"
@@ -175,10 +167,20 @@ export function Sidebar({ onClose }: SidebarProps) {
             <PanelRightClose className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Menu
-          </h3>
+      </div>
+
+      {/* Profile Section */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="flex items-center space-x-3">
+          <ProfileIcon />
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+              {user?.displayName || "User"}
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {user?.email}
+            </p>
+          </div>
         </div>
       </div>
 
