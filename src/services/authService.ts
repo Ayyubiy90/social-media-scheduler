@@ -40,10 +40,32 @@ interface AuthResponse {
 const API_URL = import.meta.env.VITE_API_URL;
 
 const handleApiError = (error: unknown): never => {
-  if (error && typeof error === "object" && "response" in error) {
-    const axiosError = error as { response?: { data?: { error?: string } } };
-    if (axiosError.response?.data?.error) {
-      throw new Error(axiosError.response.data.error);
+  if (error && typeof error === "object") {
+    // Handle Firebase Auth errors
+    if ("code" in error) {
+      const firebaseError = error as { code: string };
+      switch (firebaseError.code) {
+        case "auth/invalid-credential":
+          throw new Error("Incorrect email or password");
+        case "auth/user-not-found":
+          throw new Error("No account found with this email");
+        case "auth/wrong-password":
+          throw new Error("Incorrect password");
+        case "auth/invalid-email":
+          throw new Error("Invalid email address");
+        case "auth/too-many-requests":
+          throw new Error("Too many failed attempts. Please try again later");
+        default:
+          throw new Error("Authentication failed. Please try again");
+      }
+    }
+
+    // Handle backend API errors
+    if ("response" in error) {
+      const axiosError = error as { response?: { data?: { error?: string } } };
+      if (axiosError.response?.data?.error) {
+        throw new Error(axiosError.response.data.error);
+      }
     }
   }
 
