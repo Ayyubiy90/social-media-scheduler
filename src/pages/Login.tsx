@@ -16,18 +16,12 @@ const Login = () => {
     clearError,
   } = useUser();
   const [credentials, setCredentials] = useState({ email: "", password: "" });
-  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
-
-  // Clear any existing auth errors when component mounts or unmounts
-  useEffect(() => {
-    clearError();
-    return () => clearError();
-  }, [clearError]);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
 
   // Show error dialog when auth error occurs
   useEffect(() => {
     if (authError) {
-      setIsErrorDialogOpen(true);
+      setShowErrorDialog(true);
     }
   }, [authError]);
 
@@ -44,6 +38,11 @@ const Login = () => {
       // Error is handled by UserContext and shown in dialog
       console.error("Login error:", error);
     }
+  };
+
+  const handleCloseErrorDialog = () => {
+    setShowErrorDialog(false);
+    clearError();
   };
 
   return (
@@ -69,13 +68,11 @@ const Login = () => {
 
         <div className="mt-8 bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Error Dialog */}
             <ErrorDialog
               message={authError || ""}
-              isOpen={isErrorDialogOpen}
-              onClose={() => {
-                setIsErrorDialogOpen(false);
-                clearError();
-              }}
+              isOpen={showErrorDialog}
+              onClose={handleCloseErrorDialog}
             />
 
             <div>
