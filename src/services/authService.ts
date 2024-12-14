@@ -6,12 +6,13 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
+  updatePassword,
   User as FirebaseUser,
 } from "firebase/auth";
 import {
   googleProvider,
   facebookProvider,
-  twitterProvider
+  twitterProvider,
 } from "../config/authProviders";
 
 export interface User {
@@ -175,15 +176,56 @@ export const logoutUser = async (): Promise<void> => {
     await signOut(auth);
 
     // Clear any stored session data
-    localStorage.removeItem('user');
+    localStorage.removeItem("user");
     sessionStorage.clear();
   } catch (error) {
     console.error("Logout error:", error);
     // Still attempt to clear local state even if backend logout fails
     const auth = getAuth();
     await signOut(auth);
-    localStorage.removeItem('user');
+    localStorage.removeItem("user");
     sessionStorage.clear();
+  }
+};
+
+export const changePassword = async (
+  currentPassword: string,
+  newPassword: string
+): Promise<void> => {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user || !user.email) {
+      throw new Error("No user is currently logged in");
+    }
+
+    // Re-authenticate user with current password
+    const credential = await signInWithEmailAndPassword(
+      auth,
+      user.email,
+      currentPassword
+    );
+
+    // Update password
+    await updatePassword(credential.user, newPassword);
+
+    // Get a fresh token
+    const token = await credential.user.getIdToken();
+
+    // Notify backend of password change
+    await axios.post(
+      `${API_URL}/auth/change-password`,
+      { token },
+      {
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  } catch (error) {
+    throw handleApiError(error);
   }
 };
 

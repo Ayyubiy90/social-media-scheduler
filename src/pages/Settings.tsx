@@ -3,6 +3,7 @@ import { SocialMediaConnector } from "../components/SocialMediaConnector";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { Layout } from "../components/Layout";
 import { Settings as SettingsIcon, KeyRound } from "lucide-react";
+import { changePassword } from "../services/authService";
 
 const Settings = () => {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -32,8 +33,8 @@ const Settings = () => {
         return;
       }
 
-      // TODO: Implement password change logic using Firebase Auth
-      // For now, just show success message
+      await changePassword(currentPassword, newPassword);
+
       setSuccess("Password changed successfully");
       setCurrentPassword("");
       setNewPassword("");
