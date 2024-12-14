@@ -14,6 +14,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { useLocation } from "wouter";
 import { useUser } from "../contexts/UserContext";
 import { ProfileDialog } from "./ProfileDialog";
+import { Footer } from "./Footer";
 
 interface NavItem {
   icon: React.ElementType;
@@ -224,6 +225,9 @@ export function Sidebar({ onClose }: SidebarProps) {
           ))}
         </nav>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
