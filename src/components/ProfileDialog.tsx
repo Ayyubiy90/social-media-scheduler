@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Pencil, Settings as SettingsIcon, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { User } from "../services/authService";
+import { ProfilePictureUpload } from "./ProfilePictureUpload";
 
 interface ProfileDialogProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface ProfileDialogProps {
 export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
   const navigate = useNavigate();
   const { logout } = useUser();
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -47,6 +49,11 @@ export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
   const handleSettings = () => {
     navigate("/settings");
     onClose();
+  };
+
+  const handleUpload = async (file: File) => {
+    // TODO: Implement file upload logic using Firebase Storage
+    console.log("Uploading file:", file);
   };
 
   return (
@@ -91,7 +98,7 @@ export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
                 )}
                 <button
                   className="absolute bottom-0 right-0 p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all group-hover:scale-110 z-10 cursor-pointer"
-                  onClick={handleSettings}
+                  onClick={() => setIsUploadOpen(true)}
                   title="Change profile picture">
                   <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                 </button>
@@ -126,6 +133,12 @@ export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
           </div>
         </div>
       </div>
+
+      <ProfilePictureUpload
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        onUpload={handleUpload}
+      />
     </div>
   );
 }
