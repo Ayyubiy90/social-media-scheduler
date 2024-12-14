@@ -2,16 +2,55 @@ const admin = require("firebase-admin");
 const Queue = require("bull");
 
 // Configure notification queue with Redis
-const notificationQueue = new Queue("notificationQueue", {
-  redis: "redis://127.0.0.1:6379",
-  settings: {
-    backoff: {
-      type: "exponential",
-      delay: 5000,
+let notificationQueue;
+try {
+  notificationQueue = new Queue("notificationQueue", {
+    redis: process.env.REDIS_URL || "redis://127.0.0.1:6379",
+    settings: {
+      backoff: {
+        type: "exponential",
+        delay: 5000,
+      },
+      attempts: 3,
     },
-    attempts: 3,
-  },
-});
+  });
+
+  notificationQueue.on('error', (error) => {
+    console.error('Queue error:', error);
+  });
+
+  notificationQueue.on('failed', (job, error) => {
+    console.error(`Job ${job.id} failed:`, error);
+  });
+} catch (error) {
+  console.error('Failed to initialize notification queue:', error);
+  // Continue without queue functionality
+  notificationQueue = {
+    add: async () => {
+      console.warn('Queue not available, notification will be sent immediately');
+      return null;
+    },
+    process: () => {},
+  };
+}
+
+// Update or register FCM token
+const updateFCMToken = async (userId, fcmToken) => {
+  try {
+    await admin
+      .firestore()
+      .collection("users")
+      .doc(userId)
+      .update({
+        fcmToken,
+        fcmTokenUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating FCM token:", error);
+    throw new Error("Failed to update FCM token");
+  }
+};
 
 // Function to send notifications using Firebase Cloud Messaging
 const sendNotification = async (userId, notification) => {
@@ -212,10 +251,14 @@ const getUserNotifications = async (userId, options = {}) => {
     }
 
     const snapshot = await query.limit(limit).get();
-    return snapshot.docs.map((doc) => ({
+    const notifications = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
+    return {
+      success: true,
+      notifications
+    };
   } catch (error) {
     console.error("Error fetching notifications:", error);
     throw new Error("Failed to fetch notifications.");
@@ -233,7 +276,12 @@ const markNotificationAsRead = async (notificationId) => {
         read: true,
         readAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-    return { success: true, message: "Notification marked as read." };
+    return { 
+      success: true, 
+      result: {
+        message: "Notification marked as read"
+      }
+    };
   } catch (error) {
     console.error("Error marking notification as read:", error);
     throw new Error("Failed to mark notification as read.");
@@ -248,6 +296,7 @@ module.exports = {
   updateNotificationSettings,
   getUserNotifications,
   markNotificationAsRead,
+  updateFCMToken,
   notificationQueue,
 };
 

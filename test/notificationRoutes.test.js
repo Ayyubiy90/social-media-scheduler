@@ -34,9 +34,10 @@ describe("Notification Routes", () => {
         .set("Authorization", `Bearer ${mockToken}`);
 
       expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body[0]).toHaveProperty("id");
-      expect(response.body[0]).toHaveProperty("message");
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.notifications)).toBe(true);
+      expect(response.body.notifications[0]).toHaveProperty("id");
+      expect(response.body.notifications[0]).toHaveProperty("message");
       expect(mockNotificationService.getUserNotifications).toHaveBeenCalledWith(
         "test-user-id",
         expect.any(Object)
@@ -49,8 +50,9 @@ describe("Notification Routes", () => {
         .set("Authorization", `Bearer ${mockToken}`);
 
       expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      response.body.forEach((notification) => {
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.notifications)).toBe(true);
+      response.body.notifications.forEach((notification) => {
         expect(notification.read).toBe(false);
       });
     });
@@ -64,9 +66,8 @@ describe("Notification Routes", () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(
-        mockNotificationService.markNotificationAsRead
-      ).toHaveBeenCalledWith("1");
+      expect(response.body.result).toHaveProperty("message");
+      expect(mockNotificationService.markNotificationAsRead).toHaveBeenCalledWith("1");
     });
 
     it("should return 404 for non-existent notification", async () => {
@@ -75,6 +76,8 @@ describe("Notification Routes", () => {
         .set("Authorization", `Bearer ${mockToken}`);
 
       expect(response.status).toBe(404);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe("Notification not found");
     });
   });
 
@@ -85,10 +88,9 @@ describe("Notification Routes", () => {
         .set("Authorization", `Bearer ${mockToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe("Notification deleted successfully");
-      expect(mockNotificationService.deleteNotification).toHaveBeenCalledWith(
-        "1"
-      );
+      expect(response.body.success).toBe(true);
+      expect(response.body.result.message).toBe("Notification deleted successfully");
+      expect(mockNotificationService.deleteNotification).toHaveBeenCalledWith("1");
     });
 
     it("should return 404 for non-existent notification", async () => {
@@ -97,6 +99,8 @@ describe("Notification Routes", () => {
         .set("Authorization", `Bearer ${mockToken}`);
 
       expect(response.status).toBe(404);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe("Notification not found");
     });
   });
 
@@ -115,13 +119,12 @@ describe("Notification Routes", () => {
         .set("Authorization", `Bearer ${mockToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.prePostReminders).toBe(
-        mockSettings.prePostReminders
+      expect(response.body.success).toBe(true);
+      expect(response.body.settings).toMatchObject(mockSettings);
+      expect(mockNotificationService.updateNotificationSettings).toHaveBeenCalledWith(
+        "test-user-id",
+        mockSettings
       );
-      expect(response.body.reminderTime).toBe(mockSettings.reminderTime);
-      expect(
-        mockNotificationService.updateNotificationSettings
-      ).toHaveBeenCalledWith("test-user-id", mockSettings);
     });
 
     it("should return 400 for invalid settings", async () => {
@@ -133,7 +136,8 @@ describe("Notification Routes", () => {
         .set("Authorization", `Bearer ${mockToken}`);
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty("error");
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe("Invalid settings");
     });
   });
 
@@ -150,7 +154,8 @@ describe("Notification Routes", () => {
         .set("Authorization", `Bearer ${mockToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe("Test notification sent successfully");
+      expect(response.body.success).toBe(true);
+      expect(response.body.result.message).toBe("Test notification sent successfully");
       expect(mockNotificationService.sendTestNotification).toHaveBeenCalledWith(
         testData.type,
         testData.destination
@@ -167,7 +172,8 @@ describe("Notification Routes", () => {
         .set("Authorization", `Bearer ${mockToken}`);
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty("error");
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe("Invalid notification type");
     });
   });
 
@@ -178,11 +184,12 @@ describe("Notification Routes", () => {
         .set("Authorization", `Bearer ${mockToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty("prePostReminders");
-      expect(response.body).toHaveProperty("reminderTime");
-      expect(
-        mockNotificationService.getNotificationSettings
-      ).toHaveBeenCalledWith("test-user-id");
+      expect(response.body.success).toBe(true);
+      expect(response.body.settings).toHaveProperty("prePostReminders");
+      expect(response.body.settings).toHaveProperty("reminderTime");
+      expect(mockNotificationService.getNotificationSettings).toHaveBeenCalledWith(
+        "test-user-id"
+      );
     });
   });
 });

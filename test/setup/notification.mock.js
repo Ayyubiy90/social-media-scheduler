@@ -28,8 +28,12 @@ const mockNotificationService = {
       filtered = filtered.filter((n) => n.type === options.type);
     }
 
-    return Promise.resolve(filtered.slice(0, options.limit || 20));
+    return Promise.resolve({
+      success: true,
+      notifications: filtered.slice(0, options.limit || 20),
+    });
   }),
+
   markNotificationAsRead: jest
     .fn()
     .mockImplementation(async (notificationId) => {
@@ -38,18 +42,24 @@ const mockNotificationService = {
       }
       return {
         success: true,
-        message: "Notification marked as read.",
+        result: {
+          message: "Notification marked as read",
+        },
       };
     }),
+
   deleteNotification: jest.fn().mockImplementation(async (notificationId) => {
     if (notificationId === "non-existent-id") {
       throw new Error("Notification not found");
     }
     return {
       success: true,
-      message: "Notification deleted successfully",
+      result: {
+        message: "Notification deleted successfully",
+      },
     };
   }),
+
   updateNotificationSettings: jest
     .fn()
     .mockImplementation(async (userId, settings) => {
@@ -57,16 +67,24 @@ const mockNotificationService = {
         throw new Error("Invalid settings");
       }
       return {
-        ...settings,
-        userId,
+        success: true,
+        settings: {
+          ...settings,
+          userId,
+        },
       };
     }),
+
   getNotificationSettings: jest.fn().mockResolvedValue({
-    prePostReminders: true,
-    reminderTime: 30,
-    emailNotifications: true,
-    pushNotifications: false,
+    success: true,
+    settings: {
+      prePostReminders: true,
+      reminderTime: 30,
+      emailNotifications: true,
+      pushNotifications: false,
+    },
   }),
+
   sendTestNotification: jest
     .fn()
     .mockImplementation(async (type, destination) => {
@@ -75,13 +93,38 @@ const mockNotificationService = {
       }
       return {
         success: true,
-        message: "Test notification sent successfully",
+        result: {
+          message: "Test notification sent successfully",
+        },
       };
     }),
-  filterNotificationsByReadStatus: jest
+
+  updateFCMToken: jest.fn().mockImplementation(async (userId, fcmToken) => {
+    if (!fcmToken) {
+      throw new Error("FCM token is required");
+    }
+    return {
+      success: true,
+      result: {
+        message: "FCM token updated successfully",
+      },
+    };
+  }),
+
+  schedulePrePostNotification: jest
     .fn()
-    .mockImplementation((notifications, read) => {
-      return notifications.filter((n) => n.read === read);
+    .mockImplementation(async (userId, postId, publishTime) => {
+      if (!postId || !publishTime) {
+        throw new Error("PostId and publishTime are required");
+      }
+      return {
+        success: true,
+        result: {
+          message: "Pre-post notification scheduled successfully",
+          jobId: "test-job-id",
+          scheduledFor: publishTime,
+        },
+      };
     }),
 };
 

@@ -1,6 +1,23 @@
 import axios from "axios";
+import { getMessaging, getToken } from "firebase/messaging";
+import { initializeApp, getApp } from "firebase/app";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
+
+// Initialize Firebase
+let app;
+try {
+  app = getApp();
+} catch {
+  app = initializeApp(firebaseConfig);
+}
 
 export interface NotificationSettings {
   prePostReminders: boolean;
@@ -27,15 +44,18 @@ export const notificationService = {
   // Get user's notification settings
   async getSettings(): Promise<NotificationSettings> {
     const token = localStorage.getItem("token");
-    const response = await axios.get<NotificationSettings>(
-      `${API_URL}/notifications/settings`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return response.data;
+    const response = await axios.get<{
+      success: boolean;
+      settings: NotificationSettings;
+    }>(`${API_URL}/notifications/settings`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.data.success) {
+      throw new Error("Failed to get notification settings");
+    }
+    return response.data.settings;
   },
 
   // Update notification settings
@@ -43,7 +63,10 @@ export const notificationService = {
     settings: Partial<NotificationSettings>
   ): Promise<NotificationSettings> {
     const token = localStorage.getItem("token");
-    const response = await axios.put<{ settings: NotificationSettings }>(
+    const response = await axios.put<{
+      success: boolean;
+      settings: NotificationSettings;
+    }>(
       `${API_URL}/notifications/settings`,
       { preferences: settings },
       {
@@ -52,6 +75,9 @@ export const notificationService = {
         },
       }
     );
+    if (!response.data.success) {
+      throw new Error("Failed to update notification settings");
+    }
     return response.data.settings;
   },
 
@@ -61,7 +87,7 @@ export const notificationService = {
     publishTime: Date
   ): Promise<void> {
     const token = localStorage.getItem("token");
-    await axios.post(
+    const response = await axios.post<{ success: boolean }>(
       `${API_URL}/notifications/schedule/pre-post`,
       { postId, publishTime },
       {
@@ -70,6 +96,9 @@ export const notificationService = {
         },
       }
     );
+    if (!response.data.success) {
+      throw new Error("Failed to schedule notification");
+    }
   },
 
   // Get user's notifications
@@ -81,22 +110,25 @@ export const notificationService = {
     } = {}
   ): Promise<Notification[]> {
     const token = localStorage.getItem("token");
-    const response = await axios.get<Notification[]>(
-      `${API_URL}/notifications`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        params: options,
-      }
-    );
-    return response.data;
+    const response = await axios.get<{
+      success: boolean;
+      notifications: Notification[];
+    }>(`${API_URL}/notifications`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      params: options,
+    });
+    if (!response.data.success) {
+      throw new Error("Failed to fetch notifications");
+    }
+    return response.data.notifications;
   },
 
   // Mark notification as read
   async markAsRead(notificationId: string): Promise<void> {
     const token = localStorage.getItem("token");
-    await axios.put(
+    const response = await axios.put<{ success: boolean }>(
       `${API_URL}/notifications/${notificationId}/read`,
       {},
       {
@@ -105,6 +137,9 @@ export const notificationService = {
         },
       }
     );
+    if (!response.data.success) {
+      throw new Error("Failed to mark notification as read");
+    }
   },
 
   // Request notification permission and save FCM token
@@ -112,10 +147,34 @@ export const notificationService = {
     try {
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
-        // Here you would typically register the service worker and get FCM token
-        // This is just a placeholder - you'll need to implement FCM registration
-        console.log("Notification permission granted");
-        return true;
+        // Register service worker
+        const registration = await navigator.serviceWorker.register(
+          "/firebase-messaging-sw.js"
+        );
+
+        // Initialize Firebase Messaging
+        const messaging = getMessaging(app);
+        const currentToken = await getToken(messaging, {
+          vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+          serviceWorkerRegistration: registration,
+        });
+
+        if (currentToken) {
+          // Save FCM token to backend
+          const token = localStorage.getItem("token");
+          const response = await axios.post<{ success: boolean }>(
+            `${API_URL}/notifications/token`,
+            { fcmToken: currentToken },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          return response.data.success;
+        }
+        console.error("No FCM token available");
+        return false;
       }
       return false;
     } catch (error) {
@@ -127,7 +186,7 @@ export const notificationService = {
   // Test sending an immediate notification
   async sendTestNotification(title: string, message: string): Promise<void> {
     const token = localStorage.getItem("token");
-    await axios.post(
+    const response = await axios.post<{ success: boolean }>(
       `${API_URL}/notifications/send`,
       { title, message, type: "general" },
       {
@@ -136,5 +195,8 @@ export const notificationService = {
         },
       }
     );
+    if (!response.data.success) {
+      throw new Error("Failed to send test notification");
+    }
   },
 };
