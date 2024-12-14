@@ -103,12 +103,16 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
 
             {/* Avatar - only visible on desktop */}
             <div className="hidden md:block">
-              <img
-                className="h-8 w-8 rounded-full object-cover"
-                src={user?.photoURL || defaultAvatar}
-                alt={`${user?.displayName || "User"}'s avatar`}
-                onClick={() => setIsProfileOpen(true)} // Open profile dialog
-              />
+              <div
+                className="relative group cursor-pointer"
+                onClick={() => setIsProfileOpen(true)}>
+                <img
+                  className="h-8 w-8 rounded-full object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500"
+                  src={user?.photoURL || defaultAvatar}
+                  alt={`${user?.displayName || "User"}'s avatar`}
+                />
+                <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
+              </div>
             </div>
 
             {/* Menu button - only visible on mobile */}
@@ -136,7 +140,15 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
       <ProfileDialog
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
-        user={user || { uid: "", displayName: null, email: null, photoURL: null, token: "" }} // Handle null user with correct type
+        user={
+          user || {
+            uid: "",
+            displayName: null,
+            email: null,
+            photoURL: null,
+            token: "",
+          }
+        } // Handle null user with correct type
       />
     </>
   );

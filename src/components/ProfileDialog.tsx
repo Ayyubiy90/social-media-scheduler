@@ -71,15 +71,15 @@ export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
 
             {/* Profile Picture Section */}
             <div className="flex flex-col items-center">
-              <div className="relative group cursor-pointer">
+              <div className="relative group cursor-pointer hover:scale-105 transform transition-all duration-200">
                 {user?.photoURL ? (
-                  <div className="relative group-hover:opacity-90 transition-opacity">
+                  <div className="relative group-hover:opacity-90 transition-all">
                     <img
                       src={user.photoURL}
                       alt="Profile"
                       className="w-20 h-20 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
                     />
-                    <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-30 transition-opacity duration-200" />
+                    <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-20 transition-all duration-200" />
                   </div>
                 ) : (
                   <div
@@ -90,7 +90,7 @@ export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
                   </div>
                 )}
                 <button
-                  className="absolute bottom-0 right-0 p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all group-hover:scale-110 z-10"
+                  className="absolute bottom-0 right-0 p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all group-hover:scale-110 z-10 cursor-pointer"
                   onClick={handleSettings}
                   title="Change profile picture">
                   <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-300" />
