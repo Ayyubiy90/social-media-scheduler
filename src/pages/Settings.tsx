@@ -68,11 +68,11 @@ const Settings = () => {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                 Profile Settings
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
                   <label
                     htmlFor="currentPassword"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Current Password
                   </label>
                   <input
@@ -80,13 +80,13 @@ const Settings = () => {
                     id="currentPassword"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                    className="block w-full h-12 rounded-md border-2 border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400 text-base px-4"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="newPassword"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     New Password
                   </label>
                   <input
@@ -94,13 +94,13 @@ const Settings = () => {
                     id="newPassword"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                    className="block w-full h-12 rounded-md border-2 border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400 text-base px-4"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="confirmPassword"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Confirm New Password
                   </label>
                   <input
@@ -108,7 +108,7 @@ const Settings = () => {
                     id="confirmPassword"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                    className="block w-full h-12 rounded-md border-2 border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400 text-base px-4"
                   />
                 </div>
                 {error && (
@@ -123,10 +123,9 @@ const Settings = () => {
                 )}
                 <div>
                   <button
-                    type="button"
                     onClick={handlePasswordChange}
-                    className="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
-                    <KeyRound className="w-4 h-4 mr-2" />
+                    className="inline-flex items-center justify-center py-3 px-6 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
+                    <KeyRound className="w-5 h-5 mr-2" />
                     Change Password
                   </button>
                 </div>
@@ -136,130 +135,6 @@ const Settings = () => {
             {/* Social Media Connections */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6">
               <SocialMediaConnector />
-            </div>
-
-            {/* Platform-specific Settings */}
-            <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                Platform Settings
-              </h2>
-              <div className="space-y-4">
-                {/* Facebook Settings */}
-                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    Facebook
-                  </h3>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
-                        defaultChecked
-                      />
-                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                        Auto-schedule posts during peak engagement times
-                      </span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
-                        defaultChecked
-                      />
-                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                        Include link previews
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Twitter Settings */}
-                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    Twitter
-                  </h3>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
-                        defaultChecked
-                      />
-                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                        Auto-thread long posts
-                      </span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
-                        defaultChecked
-                      />
-                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                        Include hashtag suggestions
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* LinkedIn Settings */}
-                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    LinkedIn
-                  </h3>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
-                        defaultChecked
-                      />
-                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                        Post as company page (when available)
-                      </span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
-                        defaultChecked
-                      />
-                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                        Include article previews
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Instagram Settings */}
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    Instagram
-                  </h3>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
-                        defaultChecked
-                      />
-                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                        Auto-crop images to optimal sizes
-                      </span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox h-4 w-4 text-blue-600 dark:text-blue-400"
-                        defaultChecked
-                      />
-                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                        Suggest popular hashtags
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
