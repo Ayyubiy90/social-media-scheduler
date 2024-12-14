@@ -45,7 +45,7 @@ export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
   };
 
   const handleSettings = () => {
-    navigate("/profile/settings");
+    navigate("/settings");
     onClose();
   };
 
