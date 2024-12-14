@@ -4,12 +4,19 @@ import SocialLoginButtons from "../components/SocialLoginButtons";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { LogIn, Mail, Lock } from "lucide-react";
 import { useUser } from "../contexts/UserContext";
+import { ErrorDialog } from "../components/ErrorDialog";
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, error: authError, loading: authLoading, clearError } = useUser();
+  const {
+    login,
+    error: authError,
+    loading: authLoading,
+    clearError,
+  } = useUser();
   const [credentials, setCredentials] = useState({ email: "", password: "" });
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
 
   // Clear any existing auth errors when component mounts or unmounts
   useEffect(() => {
@@ -17,15 +24,24 @@ const Login = () => {
     return () => clearError();
   }, [clearError]);
 
+  // Show error dialog when auth error occurs
+  useEffect(() => {
+    if (authError) {
+      setIsErrorDialogOpen(true);
+    }
+  }, [authError]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await login(credentials);
       // Get the redirect path from location state or default to dashboard
-      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
+      const from =
+        (location.state as { from?: { pathname: string } })?.from?.pathname ||
+        "/dashboard";
       navigate(from, { replace: true });
     } catch (error) {
-      // Error is handled by UserContext
+      // Error is handled by UserContext and shown in dialog
       console.error("Login error:", error);
     }
   };
@@ -53,13 +69,14 @@ const Login = () => {
 
         <div className="mt-8 bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {authError && (
-              <div
-                className="bg-red-50 dark:bg-red-900/50 border border-red-400 text-red-700 dark:text-red-200 px-4 py-3 rounded relative"
-                role="alert">
-                <span className="block sm:inline">{authError}</span>
-              </div>
-            )}
+            <ErrorDialog
+              message={authError || ""}
+              isOpen={isErrorDialogOpen}
+              onClose={() => {
+                setIsErrorDialogOpen(false);
+                clearError();
+              }}
+            />
 
             <div>
               <label
