@@ -16,6 +16,7 @@ import {
   facebookProvider,
   twitterProvider,
 } from "../config/authProviders";
+import { loginAttemptService } from "./loginAttemptService";
 
 export interface User {
   token: string;
@@ -91,6 +92,16 @@ const mapFirebaseUserToUser = async (
 
 export const loginUser = async (credentials: Credentials): Promise<User> => {
   try {
+    // Check if login attempts are allowed
+    const { canAttempt, remainingTime } =
+      await loginAttemptService.checkAttempts(credentials.email);
+
+    if (!canAttempt) {
+      throw new Error(
+        `Account is temporarily locked. Please wait ${remainingTime} seconds before trying again.`
+      );
+    }
+
     const auth = getAuth();
     const userCredential = await signInWithEmailAndPassword(
       auth,
@@ -99,6 +110,9 @@ export const loginUser = async (credentials: Credentials): Promise<User> => {
     );
 
     const user = await mapFirebaseUserToUser(userCredential.user);
+
+    // Record successful login attempt
+    await loginAttemptService.recordAttempt(credentials.email, true);
 
     // Get a fresh token
     const token = await userCredential.user.getIdToken();
@@ -112,6 +126,27 @@ export const loginUser = async (credentials: Credentials): Promise<User> => {
 
     return user;
   } catch (error) {
+    // Record failed login attempt if it's not a lockout error
+    if (
+      credentials.email &&
+      error instanceof Error &&
+      !error.message.includes("temporarily locked")
+    ) {
+      await loginAttemptService.recordAttempt(credentials.email, false);
+
+      // Get remaining attempts
+      const remainingAttempts = await loginAttemptService.getRemainingAttempts(
+        credentials.email
+      );
+      if (remainingAttempts > 0) {
+        const baseError =
+          error instanceof Error ? error.message : "Authentication failed";
+        throw new Error(
+          `${baseError}\n\nRemaining attempts: ${remainingAttempts}`
+        );
+      }
+    }
+
     throw handleApiError(error);
   }
 };

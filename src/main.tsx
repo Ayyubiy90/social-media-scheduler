@@ -1,11 +1,22 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
-import './index.css';
-import './config/firebase';  // Initialize Firebase
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./config/firebase"; // Initialize Firebase first
+import "./index.css";
+import App from "./App.tsx";
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
+// Wait for Firebase to initialize before rendering
+const renderApp = () => {
+  const root = document.getElementById("root");
+  if (!root) {
+    throw new Error("Root element not found");
+  }
+
+  createRoot(root).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  );
+};
+
+// Ensure Firebase is initialized
+renderApp();

@@ -11,11 +11,16 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+
+// Initialize Firestore
+const db = getFirestore(app);
 
 // Initialize Firebase Authentication with session persistence
-export const auth = getAuth(app);
+const auth = getAuth(app);
+
+// Set persistence
 setPersistence(auth, browserSessionPersistence)
   .then(() => {
     console.log('Firebase Auth persistence set to session');
@@ -24,4 +29,5 @@ setPersistence(auth, browserSessionPersistence)
     console.error('Error setting auth persistence:', error);
   });
 
-export default app;
+// Export initialized instances
+export { app as default, db, auth };
