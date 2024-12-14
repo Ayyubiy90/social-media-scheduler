@@ -2,6 +2,7 @@ const mockServiceAccount = require("../mocks/serviceAccountKey.json");
 
 // Mock Firestore functionality
 const mockFirestore = {
+  listCollections: jest.fn().mockResolvedValue([]),
   collection: jest.fn(() => ({
     doc: jest.fn(() => ({
       get: jest.fn().mockResolvedValue({
@@ -36,6 +37,7 @@ const mockFirestore = {
 
 // Mock Firebase Admin
 const mockAdmin = {
+  apps: [],
   credential: {
     cert: jest.fn().mockReturnValue(mockServiceAccount),
   },
