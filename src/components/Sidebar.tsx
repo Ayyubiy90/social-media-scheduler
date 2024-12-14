@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Bell,
   Settings,
@@ -6,7 +6,6 @@ import {
   BarChart2,
   Calendar,
   FilePlus2,
-  LogOut,
   LayoutDashboard,
   PanelRightClose,
 } from "lucide-react";
@@ -14,6 +13,7 @@ import { useNotifications } from "../contexts/NotificationContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { useLocation } from "wouter";
 import { useUser } from "../contexts/UserContext";
+import { ProfileDialog } from "./ProfileDialog";
 
 interface NavItem {
   icon: React.ElementType;
@@ -29,10 +29,65 @@ interface SidebarProps {
   onClose: () => void;
 }
 
+function ProfileIcon() {
+  const { user } = useUser();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const getInitial = (email: string | null | undefined) => {
+    return email ? email[0].toUpperCase() : "U";
+  };
+
+  const getProfileColor = (email: string | null | undefined) => {
+    if (!email) return "bg-blue-500";
+    const colors = [
+      "bg-blue-500",
+      "bg-green-500",
+      "bg-yellow-500",
+      "bg-purple-500",
+      "bg-pink-500",
+      "bg-indigo-500",
+    ];
+    const index = email.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
+
+  return (
+    <>
+      <div
+        onClick={() => setIsProfileOpen(true)}
+        className="relative group cursor-pointer">
+        {user?.photoURL ? (
+          <div className="relative">
+            <img
+              className="h-10 w-10 rounded-full object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500"
+              src={user.photoURL}
+              alt={`${user?.displayName || "User"}'s avatar`}
+            />
+            <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
+          </div>
+        ) : (
+          <div
+            className={`h-10 w-10 rounded-full ${getProfileColor(
+              user?.email
+            )} flex items-center justify-center text-white text-sm font-semibold transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500`}>
+            {getInitial(user?.email)}
+          </div>
+        )}
+      </div>
+
+      <ProfileDialog
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        user={user || { uid: "", displayName: null, email: null, photoURL: null, token: "" }}
+      />
+    </>
+  );
+}
+
 export function Sidebar({ onClose }: SidebarProps) {
   const { unreadCount } = useNotifications();
   const [location, setLocation] = useLocation();
-  const { logout } = useUser();
+  const { user } = useUser();
 
   const handleNotificationsClick = () => {
     // Navigate to notifications page on mobile
@@ -87,14 +142,6 @@ export function Sidebar({ onClose }: SidebarProps) {
       label: "Theme",
       component: ThemeToggle,
     },
-    {
-      icon: LogOut,
-      label: "Logout",
-      onClick: () => {
-        logout();
-        setLocation("/login");
-      },
-    },
   ];
 
   const handleItemClick = (onClick?: () => void) => {
@@ -107,18 +154,31 @@ export function Sidebar({ onClose }: SidebarProps) {
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
-      {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <div className="flex items-center justify-between w-full">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Menu
-          </h2>
+      {/* Header with Profile */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="flex items-center justify-between w-full mb-4">
+          <div className="flex items-center space-x-3">
+            <ProfileIcon />
+            <div>
+              <h2 className="text-sm font-medium text-gray-900 dark:text-white">
+                {user?.displayName || "User"}
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {user?.email}
+              </p>
+            </div>
+          </div>
           <button
             onClick={onClose}
             className="p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 transition-colors"
             aria-label="Close menu">
             <PanelRightClose className="h-5 w-5" />
           </button>
+        </div>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Menu
+          </h3>
         </div>
       </div>
 
