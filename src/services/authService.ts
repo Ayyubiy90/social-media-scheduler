@@ -7,6 +7,8 @@ import {
   signOut,
   onAuthStateChanged,
   updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   User as FirebaseUser,
 } from "firebase/auth";
 import {
@@ -200,18 +202,20 @@ export const changePassword = async (
       throw new Error("No user is currently logged in");
     }
 
-    // Re-authenticate user with current password
-    const credential = await signInWithEmailAndPassword(
-      auth,
+    // Create credential with current password
+    const credential = EmailAuthProvider.credential(
       user.email,
       currentPassword
     );
 
+    // Re-authenticate user
+    await reauthenticateWithCredential(user, credential);
+
     // Update password
-    await updatePassword(credential.user, newPassword);
+    await updatePassword(user, newPassword);
 
     // Get a fresh token
-    const token = await credential.user.getIdToken();
+    const token = await user.getIdToken();
 
     // Notify backend of password change
     await axios.post(
