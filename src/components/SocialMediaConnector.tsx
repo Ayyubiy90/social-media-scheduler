@@ -114,15 +114,25 @@ export const SocialMediaConnector: React.FC = () => {
                   }
                   disabled={loading}
                   className={`
-                                        inline-flex items-center px-3 py-1.5 border rounded-md text-sm font-medium
-                                        transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
-                                        ${
-                                          isConnected
-                                            ? "border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-red-500 dark:border-gray-600 dark:text-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
-                                            : `border-transparent text-white bg-[${platform.color}] hover:bg-opacity-90 focus:ring-[${platform.color}]`
-                                        }
-                                        disabled:opacity-50 disabled:cursor-not-allowed
-                                    `}>
+                    inline-flex items-center px-4 py-2 border-2 rounded-md text-sm font-medium shadow-sm
+                    transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+                    ${
+                      isConnected
+                        ? "border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:ring-red-500 dark:border-gray-600 dark:text-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:hover:border-gray-500"
+                        : "border-transparent text-white hover:opacity-90 hover:scale-105 focus:ring-offset-2"
+                    }
+                    ${
+                      !isConnected
+                        ? `bg-[${platform.color}] focus:ring-[${platform.color}]`
+                        : ""
+                    }
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                  `}
+                  style={
+                    !isConnected
+                      ? { backgroundColor: platform.color }
+                      : undefined
+                  }>
                   {isConnected ? (
                     <>
                       <Unlink className="w-4 h-4 mr-1.5" />
