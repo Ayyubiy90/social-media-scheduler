@@ -15,6 +15,7 @@ import { useUser } from "../contexts/UserContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationsDialog } from "./NotificationsDialog";
+import { ProfileDialog } from "./ProfileDialog";
 
 interface TopNavProps {
   onSidebarToggle: () => void;
@@ -26,6 +27,7 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
   const { user } = useUser();
   const { unreadCount } = useNotifications();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false); // State for profile dialog
   const defaultAvatar = "https://via.placeholder.com/32";
 
   const handleMenuClick = (e: React.MouseEvent) => {
@@ -105,6 +107,7 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
                 className="h-8 w-8 rounded-full object-cover"
                 src={user?.photoURL || defaultAvatar}
                 alt={`${user?.displayName || "User"}'s avatar`}
+                onClick={() => setIsProfileOpen(true)} // Open profile dialog
               />
             </div>
 
@@ -127,6 +130,13 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
       <NotificationsDialog
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
+      />
+
+      {/* Profile Dialog */}
+      <ProfileDialog
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        user={user || { uid: "", displayName: null, email: null, photoURL: null, token: "" }} // Handle null user with correct type
       />
     </>
   );
