@@ -27,13 +27,30 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
   const { user } = useUser();
   const { unreadCount } = useNotifications();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false); // State for profile dialog
-  const defaultAvatar = "https://via.placeholder.com/32";
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     console.log("Menu button clicked");
     onSidebarToggle();
+  };
+
+  const getInitial = (email: string | null | undefined) => {
+    return email ? email[0].toUpperCase() : "U";
+  };
+
+  const getProfileColor = (email: string | null | undefined) => {
+    if (!email) return "bg-blue-500";
+    const colors = [
+      "bg-blue-500",
+      "bg-green-500",
+      "bg-yellow-500",
+      "bg-purple-500",
+      "bg-pink-500",
+      "bg-indigo-500",
+    ];
+    const index = email.charCodeAt(0) % colors.length;
+    return colors[index];
   };
 
   return (
@@ -103,15 +120,28 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
 
             {/* Avatar - only visible on desktop */}
             <div className="hidden md:block">
-              <div
+              <div 
                 className="relative group cursor-pointer"
-                onClick={() => setIsProfileOpen(true)}>
-                <img
-                  className="h-8 w-8 rounded-full object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500"
-                  src={user?.photoURL || defaultAvatar}
-                  alt={`${user?.displayName || "User"}'s avatar`}
-                />
-                <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
+                onClick={() => setIsProfileOpen(true)}
+              >
+                {user?.photoURL ? (
+                  <div className="relative">
+                    <img
+                      className="h-8 w-8 rounded-full object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500"
+                      src={user.photoURL}
+                      alt={`${user?.displayName || "User"}'s avatar`}
+                    />
+                    <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
+                  </div>
+                ) : (
+                  <div
+                    className={`h-8 w-8 rounded-full ${getProfileColor(
+                      user?.email
+                    )} flex items-center justify-center text-white text-sm font-semibold transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500`}
+                  >
+                    {getInitial(user?.email)}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -140,15 +170,7 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
       <ProfileDialog
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
-        user={
-          user || {
-            uid: "",
-            displayName: null,
-            email: null,
-            photoURL: null,
-            token: "",
-          }
-        } // Handle null user with correct type
+        user={user || { uid: "", displayName: null, email: null, photoURL: null, token: "" }}
       />
     </>
   );
