@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { User } from "../services/authService";
 import { ProfilePictureUpload } from "./ProfilePictureUpload";
+import { uploadProfilePicture } from "../services/storageService";
 
 interface ProfileDialogProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
   const navigate = useNavigate();
   const { logout } = useUser();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   if (!isOpen) return null;
 
@@ -52,8 +54,15 @@ export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
   };
 
   const handleUpload = async (file: File) => {
-    // TODO: Implement file upload logic using Firebase Storage
-    console.log("Uploading file:", file);
+    try {
+      setUploading(true);
+      await uploadProfilePicture(file);
+      setIsUploadOpen(false);
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -97,9 +106,12 @@ export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
                   </div>
                 )}
                 <button
-                  className="absolute bottom-0 right-0 p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all group-hover:scale-110 z-10 cursor-pointer"
-                  onClick={() => setIsUploadOpen(true)}
-                  title="Change profile picture">
+                  className={`absolute bottom-0 right-0 p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all group-hover:scale-110 z-10 cursor-pointer ${
+                    uploading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  onClick={() => !uploading && setIsUploadOpen(true)}
+                  disabled={uploading}
+                  title={uploading ? "Uploading..." : "Change profile picture"}>
                   <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                 </button>
               </div>
