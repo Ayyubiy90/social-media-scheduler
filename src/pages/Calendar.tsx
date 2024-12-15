@@ -11,11 +11,11 @@ import { usePost } from "../contexts/PostContext";
 import { Post } from "../types/database";
 import { CalendarPost } from "../components/CalendarPost";
 import { CalendarTimeSlot } from "../components/CalendarTimeSlot";
-import { Layout } from "../components/Layout";
 import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
+  Clock,
 } from "lucide-react";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -45,107 +45,123 @@ export function Calendar() {
   };
 
   return (
-    <Layout>
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <CalendarIcon className="h-6 w-6 mr-2" />
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                Content Calendar
-              </h1>
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          {/* Header */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 mb-8 transform transition-all duration-200 hover:shadow-xl">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
+                  <CalendarIcon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  Content Calendar
+                </h1>
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setSelectedDate(addDays(selectedDate, -7))}
+                  className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors duration-200">
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => setSelectedDate(new Date())}
+                  className="px-6 py-3 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors duration-200">
+                  Today
+                </button>
+                <button
+                  onClick={() => setSelectedDate(addDays(selectedDate, 7))}
+                  className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors duration-200">
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
             </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setSelectedDate(addDays(selectedDate, -7))}
-                className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setSelectedDate(new Date())}
-                className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
-                Today
-              </button>
-              <button
-                onClick={() => setSelectedDate(addDays(selectedDate, 7))}
-                className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                <ChevronRight className="h-5 w-5" />
-              </button>
+          </div>
+
+          {/* Calendar */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transform transition-all duration-200 hover:shadow-xl">
+            {/* Days Header */}
+            <div className="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700">
+              <div className="py-4 px-4 flex items-center justify-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+                <Clock className="w-4 h-4" />
+                <span>Time</span>
+              </div>
+              {DAYS.map((dayOffset) => {
+                const date = addDays(weekStart, dayOffset);
+                const isToday = isSameDay(date, new Date());
+                return (
+                  <div
+                    key={dayOffset}
+                    className={`py-4 px-2 text-center transition-colors duration-200 ${
+                      isToday ? "bg-indigo-50 dark:bg-indigo-900/20" : ""
+                    }`}>
+                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      {format(date, "EEE")}
+                    </div>
+                    <div
+                      className={`text-lg font-bold ${
+                        isToday
+                          ? "text-indigo-600 dark:text-indigo-400"
+                          : "text-gray-900 dark:text-white"
+                      }`}>
+                      {format(date, "d")}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+
+            {/* Calendar Grid */}
+            <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
+              <div className="grid grid-cols-8">
+                {/* Time Column */}
+                <div className="bg-gray-50 dark:bg-gray-800/50">
+                  {HOURS.map((hour) => (
+                    <div
+                      key={hour}
+                      className="h-20 border-b border-r border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center justify-center">
+                      {format(setHours(new Date(), hour), "ha")}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Days Columns */}
+                {DAYS.map((dayOffset) => (
+                  <div
+                    key={dayOffset}
+                    className="border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    {HOURS.map((hour) => {
+                      const date = addDays(weekStart, dayOffset);
+                      date.setHours(hour, 0, 0, 0);
+                      const scheduledPosts = posts.filter(
+                        (post) =>
+                          post.scheduledFor instanceof Date &&
+                          isSameDay(post.scheduledFor, date) &&
+                          post.scheduledFor.getHours() === hour
+                      ).map((post): Post & { mediaUrls: string[] } => ({
+                        ...post,
+                        mediaUrls: post.media || []
+                      }));
+
+                      return (
+                        <CalendarTimeSlot
+                          key={`${dayOffset}-${hour}`}
+                          id={`${dayOffset}-${hour}`}
+                          date={date}>
+                          {scheduledPosts.map((post) => (
+                            <CalendarPost key={post.id} post={post} />
+                          ))}
+                        </CalendarTimeSlot>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </DndContext>
           </div>
         </div>
-
-        <div className="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700">
-          <div className="py-4 px-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800">
-            Time
-          </div>
-          {DAYS.map((dayOffset) => {
-            const date = addDays(weekStart, dayOffset);
-            return (
-              <div
-                key={dayOffset}
-                className="py-4 px-2 text-center bg-white dark:bg-gray-800">
-                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {format(date, "EEE")}
-                </div>
-                <div
-                  className={`text-lg font-medium ${
-                    isSameDay(date, new Date())
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-gray-900 dark:text-white"
-                  }`}>
-                  {format(date, "d")}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
-          <div className="grid grid-cols-8">
-            <div className="bg-white dark:bg-gray-800">
-              {HOURS.map((hour) => (
-                <div
-                  key={hour}
-                  className="h-20 border-b border-r border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 text-center py-1">
-                  {format(setHours(new Date(), hour), "ha")}
-                </div>
-              ))}
-            </div>
-
-            {DAYS.map((dayOffset) => (
-              <div
-                key={dayOffset}
-                className="border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                {HOURS.map((hour) => {
-                  const date = addDays(weekStart, dayOffset);
-                  date.setHours(hour, 0, 0, 0);
-                  const scheduledPosts = posts.filter(
-                    (post) =>
-                      post.scheduledFor instanceof Date &&
-                      isSameDay(post.scheduledFor, date) &&
-                      post.scheduledFor.getHours() === hour
-                  ).map((post): Post & { mediaUrls: string[] } => ({
-                    ...post,
-                    mediaUrls: post.media || []
-                  }));
-
-                  return (
-                    <CalendarTimeSlot
-                      key={`${dayOffset}-${hour}`}
-                      id={`${dayOffset}-${hour}`}
-                      date={date}>
-                      {scheduledPosts.map((post) => (
-                        <CalendarPost key={post.id} post={post} />
-                      ))}
-                    </CalendarTimeSlot>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </DndContext>
       </div>
-    </Layout>
+    </div>
   );
 }
