@@ -40,41 +40,58 @@ interface AuthResponse {
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const handleApiError = (error: unknown): never => {
+const handleApiError = async (
+  error: unknown,
+  email?: string
+): Promise<never> => {
+  let errorMessage = "";
+
   if (error && typeof error === "object") {
     // Handle Firebase Auth errors
     if ("code" in error) {
       const firebaseError = error as { code: string };
       switch (firebaseError.code) {
         case "auth/invalid-credential":
-          throw new Error("Incorrect email or password");
-        case "auth/user-not-found":
-          throw new Error("No account found with this email");
         case "auth/wrong-password":
-          throw new Error("Incorrect password");
+          errorMessage = "Incorrect email or password";
+          break;
+        case "auth/user-not-found":
+          errorMessage = "No account found with this email";
+          break;
         case "auth/invalid-email":
-          throw new Error("Invalid email address");
+          errorMessage = "Invalid email address";
+          break;
         case "auth/too-many-requests":
-          throw new Error("Too many failed attempts. Please try again later");
+          errorMessage = "Too many failed attempts. Please try again later";
+          break;
+        case "auth/requires-recent-login":
+          errorMessage = "Please log in again to change your password";
+          break;
         default:
-          throw new Error("Authentication failed. Please try again");
-      }
-    }
-
-    // Handle backend API errors
-    if ("response" in error) {
-      const axiosError = error as { response?: { data?: { error?: string } } };
-      if (axiosError.response?.data?.error) {
-        throw new Error(axiosError.response.data.error);
+          errorMessage = "Authentication failed. Please try again";
       }
     }
   }
 
-  if (error instanceof Error) {
-    throw error;
+  // Get remaining attempts for login errors
+  if (
+    email &&
+    (errorMessage.includes("Incorrect") || errorMessage.includes("No account"))
+  ) {
+    const remainingAttempts = await loginAttemptService.getRemainingAttempts(
+      email
+    );
+    if (remainingAttempts > 0) {
+      errorMessage += `\n\nRemaining attempts: ${remainingAttempts}`;
+    } else {
+      const { remainingTime } = await loginAttemptService.checkAttempts(email);
+      if (remainingTime) {
+        errorMessage = `Account is temporarily locked. Please wait ${remainingTime} seconds before trying again.`;
+      }
+    }
   }
 
-  throw new Error("An unexpected error occurred");
+  throw new Error(errorMessage || "An unexpected error occurred");
 };
 
 const mapFirebaseUserToUser = async (
@@ -133,21 +150,9 @@ export const loginUser = async (credentials: Credentials): Promise<User> => {
       !error.message.includes("temporarily locked")
     ) {
       await loginAttemptService.recordAttempt(credentials.email, false);
-
-      // Get remaining attempts
-      const remainingAttempts = await loginAttemptService.getRemainingAttempts(
-        credentials.email
-      );
-      if (remainingAttempts > 0) {
-        const baseError =
-          error instanceof Error ? error.message : "Authentication failed";
-        throw new Error(
-          `${baseError}\n\nRemaining attempts: ${remainingAttempts}`
-        );
-      }
     }
 
-    throw handleApiError(error);
+    throw await handleApiError(error, credentials.email);
   }
 };
 
@@ -174,7 +179,7 @@ export const registerUser = async (userData: Credentials): Promise<User> => {
 
     return user;
   } catch (error) {
-    throw handleApiError(error);
+    throw await handleApiError(error);
   }
 };
 
@@ -212,7 +217,7 @@ export const socialLogin = async (provider: string): Promise<User> => {
 
     return user;
   } catch (error) {
-    throw handleApiError(error);
+    throw await handleApiError(error);
   }
 };
 
@@ -286,7 +291,7 @@ export const changePassword = async (
       }
     );
   } catch (error) {
-    throw handleApiError(error);
+    throw await handleApiError(error);
   }
 };
 
