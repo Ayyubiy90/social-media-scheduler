@@ -8,6 +8,10 @@ import {
   Copy,
   CalendarCheck,
   Archive,
+  Edit2,
+  Trash2,
+  Clock,
+  Calendar,
 } from "lucide-react";
 
 const Dashboard = () => {
@@ -49,77 +53,94 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <LayoutDashboard className="w-6 h-6" />
-                Dashboard
-              </h1>
+          {/* Header */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 mb-8 transform transition-all duration-200 hover:shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
+                  <LayoutDashboard className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  Dashboard
+                </h1>
+              </div>
             </div>
 
-            <div className="text-gray-600 dark:text-gray-300">
-              <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <KeyRound className="w-4 h-4" />
-                    <p className="font-medium">Authentication Token:</p>
-                  </div>
-                  <button
-                    onClick={copyToClipboard}
-                    className={`inline-flex items-center gap-2 px-3 py-1 text-sm rounded-md transition-colors ${
-                      copied
-                        ? "bg-green-500 text-white"
-                        : "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-700 dark:text-blue-100 dark:hover:bg-blue-600"
-                    }`}>
-                    <Copy className="w-4 h-4" />
-                    {copied ? "Copied!" : "Copy Token"}
-                  </button>
+            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <KeyRound className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <p className="font-semibold text-gray-700 dark:text-gray-300">
+                    Authentication Token
+                  </p>
                 </div>
-                <p className="text-sm break-all font-mono bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-600">
-                  {user?.token}
-                </p>
+                <button
+                  onClick={copyToClipboard}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                    copied
+                      ? "bg-green-500 text-white"
+                      : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-300 dark:hover:bg-indigo-800"
+                  }`}>
+                  <Copy className="w-4 h-4" />
+                  {copied ? "Copied!" : "Copy Token"}
+                </button>
+              </div>
+              <div className="font-mono text-sm bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600 break-all">
+                {user?.token}
               </div>
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/50 border border-red-400 text-red-700 dark:text-red-200 px-4 py-3 rounded relative mb-6">
-              {error}
+            <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-4 mb-8 rounded-r-lg">
+              <p className="text-red-700 dark:text-red-400">{error}</p>
             </div>
           )}
 
           {/* Scheduled Posts Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
-              <CalendarCheck className="w-5 h-5" />
-              Scheduled Posts
-            </h2>
-            <div className="space-y-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 mb-8 transform transition-all duration-200 hover:shadow-xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <CalendarCheck className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Scheduled Posts
+              </h2>
+            </div>
+            <div className="space-y-6">
               {scheduledPosts.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400">
-                  No scheduled posts
-                </p>
+                <div className="text-center py-8">
+                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">
+                    No scheduled posts yet
+                  </p>
+                </div>
               ) : (
                 scheduledPosts.map((post) => (
                   <div
                     key={post.id}
-                    className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                    <p className="text-gray-900 dark:text-white">
+                    className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 transition-all duration-200 hover:shadow-md">
+                    <p className="text-gray-900 dark:text-white text-lg mb-4">
                       {post.content}
                     </p>
-                    <div className="mt-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                      <span>
-                        Scheduled for: {formatDate(post.scheduledFor!)}
-                      </span>
-                      <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                        <Clock className="w-4 h-4" />
+                        <span>
+                          Scheduled for: {formatDate(post.scheduledFor!)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
                         <button
                           onClick={() => navigate(`/edit-post/${post.id}`)}
-                          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                          className="inline-flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 rounded-lg transition-colors duration-200">
+                          <Edit2 className="w-4 h-4" />
                           Edit
                         </button>
                         <button
                           onClick={() => deletePost(post.id)}
-                          className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                          className="inline-flex items-center gap-2 px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800 rounded-lg transition-colors duration-200">
+                          <Trash2 className="w-4 h-4" />
                           Delete
                         </button>
                       </div>
@@ -131,33 +152,47 @@ const Dashboard = () => {
           </div>
 
           {/* Drafts Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
-              <Archive className="w-5 h-5" />
-              Drafts
-            </h2>
-            <div className="space-y-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 transform transition-all duration-200 hover:shadow-xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                <Archive className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Drafts
+              </h2>
+            </div>
+            <div className="space-y-6">
               {drafts.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400">No drafts</p>
+                <div className="text-center py-8">
+                  <Archive className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">
+                    No drafts available
+                  </p>
+                </div>
               ) : (
                 drafts.map((post) => (
                   <div
                     key={post.id}
-                    className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                    <p className="text-gray-900 dark:text-white">
+                    className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 transition-all duration-200 hover:shadow-md">
+                    <p className="text-gray-900 dark:text-white text-lg mb-4">
                       {post.content}
                     </p>
-                    <div className="mt-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                      <span>Created: {formatDate(post.createdAt)}</span>
-                      <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                        <Clock className="w-4 h-4" />
+                        <span>Created: {formatDate(post.createdAt)}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
                         <button
                           onClick={() => navigate(`/edit-post/${post.id}`)}
-                          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                          className="inline-flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 rounded-lg transition-colors duration-200">
+                          <Edit2 className="w-4 h-4" />
                           Edit
                         </button>
                         <button
                           onClick={() => deletePost(post.id)}
-                          className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                          className="inline-flex items-center gap-2 px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800 rounded-lg transition-colors duration-200">
+                          <Trash2 className="w-4 h-4" />
                           Delete
                         </button>
                       </div>
