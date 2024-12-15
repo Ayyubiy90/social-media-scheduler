@@ -42,7 +42,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <Layout>{children}</Layout>;
+  return <>{children}</>;
 };
 
 // Auth Route wrapper (redirects to dashboard if already logged in)
@@ -96,63 +96,21 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Protected Routes */}
+      {/* Protected Routes - Wrapped in Layout */}
       <Route
-        path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <Layout />
           </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/create-post"
-        element={
-          <ProtectedRoute>
-            <CreatePost />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/analytics"
-        element={
-          <ProtectedRoute>
-            <Analytics />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/calendar"
-        element={
-          <ProtectedRoute>
-            <Calendar />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/notifications"
-        element={
-          <ProtectedRoute>
-            <NotificationsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/logout"
-        element={
-          <ProtectedRoute>
-            <LogoutHandler />
-          </ProtectedRoute>
-        }
-      />
+        }>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/create-post" element={<CreatePost />} />
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/calendar" element={<Calendar />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/logout" element={<LogoutHandler />} />
+      </Route>
 
       {/* Default Route - Redirect to login if not authenticated, dashboard if authenticated */}
       <Route

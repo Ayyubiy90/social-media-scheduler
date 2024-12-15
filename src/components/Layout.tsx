@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
-import { useLocation } from "react-router-dom";
+import { useLocation, Outlet } from "react-router-dom";
 import { Footer } from "./Footer";
 
-interface LayoutProps {
-  children: React.ReactNode;
-}
-
-export function Layout({ children }: LayoutProps) {
+export function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
 
@@ -47,7 +43,9 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main Content */}
       <main className="pt-16 flex flex-col min-h-screen">
-        <div className="flex-grow">{children}</div>
+        <div className="flex-grow">
+          <Outlet />
+        </div>
         <Footer />
       </main>
 
