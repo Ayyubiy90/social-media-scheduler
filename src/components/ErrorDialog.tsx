@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
 
 interface ErrorDialogProps {
@@ -8,15 +8,53 @@ interface ErrorDialogProps {
 }
 
 export function ErrorDialog({ message, onClose, isOpen }: ErrorDialogProps) {
+  const [countdown, setCountdown] = useState<number | null>(null);
+
+  // Extract countdown time from message if it exists
+  useEffect(() => {
+    if (isOpen && message.includes("wait")) {
+      const match = message.match(/wait (\d+) seconds/);
+      if (match && match[1]) {
+        setCountdown(parseInt(match[1], 10));
+      }
+    } else {
+      setCountdown(null);
+    }
+  }, [isOpen, message]);
+
+  // Handle countdown
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (countdown !== null && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [countdown]);
+
+  // Format the message to show countdown
+  const formattedMessage =
+    countdown !== null
+      ? message.replace(/\d+ seconds/, `${countdown} seconds`)
+      : message;
+
   // Prevent scrolling when dialog is open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
@@ -26,11 +64,10 @@ export function ErrorDialog({ message, onClose, isOpen }: ErrorDialogProps) {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
-        <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" 
+        <div
+          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
           aria-hidden="true"
-          onClick={onClose}
-        ></div>
+          onClick={countdown === null ? onClose : undefined}></div>
 
         {/* Center dialog */}
         <div className="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full dark:bg-gray-800">
@@ -45,7 +82,7 @@ export function ErrorDialog({ message, onClose, isOpen }: ErrorDialogProps) {
                 </h3>
                 <div className="mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-300">
-                    {message}
+                    {formattedMessage}
                   </p>
                 </div>
               </div>
@@ -54,9 +91,12 @@ export function ErrorDialog({ message, onClose, isOpen }: ErrorDialogProps) {
           <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 sm:px-6 sm:flex sm:flex-row-reverse">
             <button
               type="button"
-              onClick={onClose}
-              className="inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm dark:hover:bg-red-800">
-              Close
+              onClick={countdown === null ? onClose : undefined}
+              disabled={countdown !== null}
+              className={`inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm dark:hover:bg-red-800 ${
+                countdown !== null ? "opacity-50 cursor-not-allowed" : ""
+              }`}>
+              {countdown !== null ? `Wait (${countdown}s)` : "Close"}
             </button>
           </div>
         </div>

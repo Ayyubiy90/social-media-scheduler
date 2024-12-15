@@ -10,6 +10,7 @@ import {
   EmailAuthProvider,
   reauthenticateWithCredential,
   User as FirebaseUser,
+  AuthError,
 } from "firebase/auth";
 import {
   googleProvider,
@@ -40,37 +41,36 @@ interface AuthResponse {
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+const getErrorMessage = (error: AuthError): string => {
+  switch (error.code) {
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+      return "Incorrect email or password";
+    case "auth/user-not-found":
+      return "No account found with this email";
+    case "auth/invalid-email":
+      return "Invalid email address";
+    case "auth/too-many-requests":
+      return "Too many failed attempts. Please try again later";
+    case "auth/requires-recent-login":
+      return "Please log in again to change your password";
+    default:
+      return "Authentication failed. Please try again";
+  }
+};
+
 const handleApiError = async (
   error: unknown,
-  email?: string
+  email: string | undefined = undefined
 ): Promise<never> => {
   let errorMessage = "";
 
-  if (error && typeof error === "object") {
-    // Handle Firebase Auth errors
-    if ("code" in error) {
-      const firebaseError = error as { code: string };
-      switch (firebaseError.code) {
-        case "auth/invalid-credential":
-        case "auth/wrong-password":
-          errorMessage = "Incorrect email or password";
-          break;
-        case "auth/user-not-found":
-          errorMessage = "No account found with this email";
-          break;
-        case "auth/invalid-email":
-          errorMessage = "Invalid email address";
-          break;
-        case "auth/too-many-requests":
-          errorMessage = "Too many failed attempts. Please try again later";
-          break;
-        case "auth/requires-recent-login":
-          errorMessage = "Please log in again to change your password";
-          break;
-        default:
-          errorMessage = "Authentication failed. Please try again";
-      }
-    }
+  if (error && typeof error === "object" && "code" in error) {
+    errorMessage = getErrorMessage(error as AuthError);
+  } else if (error instanceof Error) {
+    errorMessage = error.message;
+  } else {
+    errorMessage = "An unexpected error occurred";
   }
 
   // Get remaining attempts for login errors
@@ -91,7 +91,7 @@ const handleApiError = async (
     }
   }
 
-  throw new Error(errorMessage || "An unexpected error occurred");
+  throw new Error(errorMessage);
 };
 
 const mapFirebaseUserToUser = async (
