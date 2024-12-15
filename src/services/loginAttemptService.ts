@@ -5,6 +5,7 @@ import {
   setDoc,
   serverTimestamp,
   Timestamp,
+  collection,
 } from "firebase/firestore";
 import app from "../config/firebase";
 
@@ -16,12 +17,26 @@ interface LoginAttempt {
 
 const MAX_ATTEMPTS = 5;
 const COOLDOWN_SECONDS = 60;
+const COLLECTION_NAME = "loginAttempts";
 
 export class LoginAttemptService {
   private db = getFirestore(app);
 
   private getAttemptsRef(email: string) {
-    return doc(this.db, "loginAttempts", email);
+    return doc(collection(this.db, COLLECTION_NAME), email);
+  }
+
+  private async initializeAttempts(email: string): Promise<void> {
+    const docRef = this.getAttemptsRef(email);
+    await setDoc(
+      docRef,
+      {
+        attempts: 0,
+        lastAttempt: serverTimestamp(),
+        lockedUntil: null,
+      },
+      { merge: true }
+    );
   }
 
   async checkAttempts(
@@ -32,12 +47,7 @@ export class LoginAttemptService {
       const docSnap = await getDoc(docRef);
 
       if (!docSnap.exists()) {
-        // First attempt
-        await setDoc(docRef, {
-          attempts: 0,
-          lastAttempt: serverTimestamp(),
-          lockedUntil: null,
-        });
+        await this.initializeAttempts(email);
         return { canAttempt: true };
       }
 
@@ -67,10 +77,14 @@ export class LoginAttemptService {
         // Lock the account
         const now = Timestamp.now();
         const lockedUntil = new Timestamp(now.seconds + COOLDOWN_SECONDS, 0);
-        await setDoc(docRef, {
-          ...data,
-          lockedUntil,
-        });
+        await setDoc(
+          docRef,
+          {
+            ...data,
+            lockedUntil,
+          },
+          { merge: true }
+        );
         return {
           canAttempt: false,
           remainingTime: COOLDOWN_SECONDS,
@@ -91,12 +105,7 @@ export class LoginAttemptService {
       let docSnap = await getDoc(docRef);
 
       if (!docSnap.exists()) {
-        // Initialize attempts for new email
-        await setDoc(docRef, {
-          attempts: 0,
-          lastAttempt: serverTimestamp(),
-          lockedUntil: null,
-        });
+        await this.initializeAttempts(email);
         docSnap = await getDoc(docRef);
       }
 
@@ -106,7 +115,9 @@ export class LoginAttemptService {
         return;
       }
 
-      const data = docSnap.data() as LoginAttempt;
+      const data = docSnap.exists()
+        ? (docSnap.data() as LoginAttempt)
+        : { attempts: 0, lastAttempt: serverTimestamp(), lockedUntil: null };
       const attempts = data.attempts + 1;
       let lockedUntil: Timestamp | null = null;
 
@@ -115,11 +126,15 @@ export class LoginAttemptService {
         lockedUntil = new Timestamp(now.seconds + COOLDOWN_SECONDS, 0);
       }
 
-      await setDoc(docRef, {
-        attempts,
-        lastAttempt: serverTimestamp(),
-        lockedUntil,
-      });
+      await setDoc(
+        docRef,
+        {
+          attempts,
+          lastAttempt: serverTimestamp(),
+          lockedUntil,
+        },
+        { merge: true }
+      );
     } catch (error) {
       console.error("Error recording attempt:", error);
     }
@@ -128,11 +143,15 @@ export class LoginAttemptService {
   private async resetAttempts(email: string): Promise<void> {
     try {
       const docRef = this.getAttemptsRef(email);
-      await setDoc(docRef, {
-        attempts: 0,
-        lastAttempt: serverTimestamp(),
-        lockedUntil: null,
-      });
+      await setDoc(
+        docRef,
+        {
+          attempts: 0,
+          lastAttempt: serverTimestamp(),
+          lockedUntil: null,
+        },
+        { merge: true }
+      );
     } catch (error) {
       console.error("Error resetting attempts:", error);
     }
@@ -144,12 +163,7 @@ export class LoginAttemptService {
       const docSnap = await getDoc(docRef);
 
       if (!docSnap.exists()) {
-        // First attempt
-        await setDoc(docRef, {
-          attempts: 0,
-          lastAttempt: serverTimestamp(),
-          lockedUntil: null,
-        });
+        await this.initializeAttempts(email);
         return MAX_ATTEMPTS;
       }
 

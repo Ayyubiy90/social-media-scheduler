@@ -41,6 +41,19 @@ interface AuthResponse {
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+const mapFirebaseUserToUser = async (
+  firebaseUser: FirebaseUser
+): Promise<User> => {
+  const token = await firebaseUser.getIdToken();
+  return {
+    token,
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    displayName: firebaseUser.displayName,
+    photoURL: firebaseUser.photoURL,
+  };
+};
+
 const getErrorMessage = async (
   error: AuthError,
   email: string
@@ -76,8 +89,13 @@ const getErrorMessage = async (
       message = "Authentication failed. Please try again";
   }
 
-  // Add remaining attempts if not locked
-  if (canAttempt) {
+  // Add remaining attempts if not locked and error is related to credentials
+  if (
+    canAttempt &&
+    (error.code === "auth/invalid-credential" ||
+      error.code === "auth/wrong-password" ||
+      error.code === "auth/user-not-found")
+  ) {
     const remainingAttempts = await loginAttemptService.getRemainingAttempts(
       email
     );
@@ -104,19 +122,6 @@ const handleApiError = async (
   }
 
   throw new Error(errorMessage);
-};
-
-const mapFirebaseUserToUser = async (
-  firebaseUser: FirebaseUser
-): Promise<User> => {
-  const token = await firebaseUser.getIdToken();
-  return {
-    token,
-    uid: firebaseUser.uid,
-    email: firebaseUser.email,
-    displayName: firebaseUser.displayName,
-    photoURL: firebaseUser.photoURL,
-  };
 };
 
 export const loginUser = async (credentials: Credentials): Promise<User> => {

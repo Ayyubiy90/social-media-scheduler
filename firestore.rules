@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Allow read/write access to login attempts collection without auth
     match /loginAttempts/{email} {
-      allow read, write: if true;
+      allow read, write, create, update, delete: if true;
     }
     
     // Default deny all for other collections
