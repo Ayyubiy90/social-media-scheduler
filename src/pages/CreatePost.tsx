@@ -1,13 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePost } from "../contexts/PostContext";
-import { ThemeToggle } from "../components/ThemeToggle";
 import {
   FilePlus2,
   FileText,
   Share2,
   CalendarClock,
-  X,
   AlertCircle,
   Send,
 } from "lucide-react";
@@ -136,24 +134,13 @@ const CreatePost = () => {
         <div className="px-4 py-6 sm:px-0">
           {/* Header */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 mb-8 transform transition-all duration-200 hover:shadow-xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
-                  <FilePlus2 className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Create Post
-                </h1>
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
+                <FilePlus2 className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
               </div>
-              <div className="flex items-center gap-4">
-                <ThemeToggle />
-                <button
-                  onClick={() => navigate("/dashboard")}
-                  className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium rounded-lg text-red-600 bg-red-100 hover:bg-red-200 dark:text-red-400 dark:bg-red-900/20 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors duration-200">
-                  <X className="w-5 h-5" />
-                  Cancel
-                </button>
-              </div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                Create Post
+              </h1>
             </div>
           </div>
 
@@ -201,8 +188,16 @@ const CreatePost = () => {
                           rounded-lg text-sm font-medium
                           transition-all duration-200
                           ${platform.bgColor}
-                          ${isSelected ? platform.selectedBgColor : platform.hoverBgColor}
-                          ${isSelected ? "ring-2 ring-offset-2 ring-gray-500 dark:ring-offset-gray-800" : ""}
+                          ${
+                            isSelected
+                              ? platform.selectedBgColor
+                              : platform.hoverBgColor
+                          }
+                          ${
+                            isSelected
+                              ? "ring-2 ring-offset-2 ring-gray-500 dark:ring-offset-gray-800"
+                              : ""
+                          }
                         `}>
                         {platform.icon}
                         <span>{platform.name}</span>
@@ -247,7 +242,11 @@ const CreatePost = () => {
                     dark:focus:ring-offset-gray-800
                     transition-all duration-200
                     shadow-lg hover:shadow-xl
-                    ${loading || selectedPlatforms.length === 0 ? "opacity-50 cursor-not-allowed" : ""}
+                    ${
+                      loading || selectedPlatforms.length === 0
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    }
                   `}>
                   {loading ? (
                     <>
