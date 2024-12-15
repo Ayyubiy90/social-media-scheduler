@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useNotifications } from "../contexts/NotificationContext";
 import { ThemeToggle } from "./ThemeToggle";
-import { useLocation } from "wouter";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { ProfileDialog } from "./ProfileDialog";
 import { Footer } from "./Footer";
@@ -95,13 +95,14 @@ function ProfileIcon() {
 
 export function Sidebar({ onClose }: SidebarProps) {
   const { unreadCount } = useNotifications();
-  const [location, setLocation] = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useUser();
 
   const handleNotificationsClick = () => {
     // Navigate to notifications page on mobile
     if (window.innerWidth < 768) {
-      setLocation("/notifications");
+      navigate("/notifications");
       onClose();
     }
   };
@@ -110,25 +111,25 @@ export function Sidebar({ onClose }: SidebarProps) {
     {
       icon: LayoutDashboard,
       label: "Dashboard",
-      onClick: () => setLocation("/dashboard"),
+      onClick: () => navigate("/dashboard"),
       path: "/dashboard",
     },
     {
       icon: BarChart2,
       label: "Analytics",
-      onClick: () => setLocation("/analytics"),
+      onClick: () => navigate("/analytics"),
       path: "/analytics",
     },
     {
       icon: Calendar,
       label: "Calendar",
-      onClick: () => setLocation("/calendar"),
+      onClick: () => navigate("/calendar"),
       path: "/calendar",
     },
     {
       icon: FilePlus2,
       label: "Create Post",
-      onClick: () => setLocation("/create-post"),
+      onClick: () => navigate("/create-post"),
       path: "/create-post",
       className: "block md:hidden", // Show on mobile, hide on desktop
     },
@@ -143,7 +144,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     {
       icon: Settings,
       label: "Settings",
-      onClick: () => setLocation("/settings"),
+      onClick: () => navigate("/settings"),
       path: "/settings",
     },
     {
@@ -154,7 +155,6 @@ export function Sidebar({ onClose }: SidebarProps) {
   ];
 
   const handleItemClick = (onClick?: () => void) => {
-    console.log("Item clicked");
     if (onClick) {
       onClick();
     }
@@ -208,7 +208,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                 <button
                   onClick={() => handleItemClick(item.onClick)}
                   className={`w-full flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors ${
-                    item.path && location === item.path
+                    item.path && location.pathname === item.path
                       ? "bg-gray-100 dark:bg-gray-700"
                       : ""
                   }`}>

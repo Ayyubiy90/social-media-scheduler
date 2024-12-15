@@ -13,6 +13,7 @@ import { DatabaseProvider } from "./contexts/DatabaseContext";
 import { PostProvider } from "./contexts/PostContext";
 import { AnalyticsProvider } from "./contexts/AnalyticsContext";
 import { SocialMediaProvider } from "./contexts/SocialMediaContext";
+import { Layout } from "./components/Layout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -41,7 +42,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <>{children}</>;
+  return <Layout>{children}</Layout>;
 };
 
 // Auth Route wrapper (redirects to dashboard if already logged in)

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
-import { useLocation } from "wouter";
+import { useLocation } from "react-router-dom";
 import { Footer } from "./Footer";
 
 interface LayoutProps {
@@ -10,7 +10,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [, setLocation] = useLocation();
+  const location = useLocation();
 
   // Debug log for sidebar state
   useEffect(() => {
@@ -20,7 +20,7 @@ export function Layout({ children }: LayoutProps) {
   // Close sidebar on route change
   useEffect(() => {
     setIsSidebarOpen(false);
-  }, [setLocation]);
+  }, [location]);
 
   // Handle body scroll when sidebar is open
   useEffect(() => {
