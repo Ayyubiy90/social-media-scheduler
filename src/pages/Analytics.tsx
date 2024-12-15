@@ -4,8 +4,14 @@ import { EngagementChart } from "../components/analytics/EngagementChart";
 import { PlatformStats } from "../components/analytics/PlatformStats";
 import { PostPerformance } from "../components/analytics/PostPerformance";
 import { RealTimeMetrics } from "../components/analytics/RealTimeMetrics";
-import { Layout } from "../components/Layout";
-import { BarChart2 } from "lucide-react";
+import {
+  BarChart2,
+  Clock,
+  TrendingUp,
+  Activity,
+  FileText,
+  Download,
+} from "lucide-react";
 import type { RealTimeMetric } from "../types/analytics";
 
 const defaultRealTimeMetrics: RealTimeMetric[] = [
@@ -28,92 +34,117 @@ function Analytics() {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-gray-600 dark:text-gray-300">
-            Loading analytics...
-          </div>
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-gray-600 dark:text-gray-300 flex items-center gap-3">
+          <Activity className="w-5 h-5 animate-pulse" />
+          Loading analytics...
         </div>
-      </Layout>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Layout>
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-red-600 dark:text-red-400">{error}</div>
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-4 py-3 rounded-lg">
+          {error}
         </div>
-      </Layout>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow px-5 py-6">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <BarChart2 className="w-6 h-6" />
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          {/* Header */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 mb-8 transform transition-all duration-200 hover:shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
+                  <BarChart2 className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                   Analytics
                 </h1>
-                <select
-                  value={timeframe}
-                  onChange={(e) =>
-                    setTimeframe(e.target.value as "week" | "month" | "year")
-                  }
-                  className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                  <option value="week">Last 7 days</option>
-                  <option value="month">Last 30 days</option>
-                  <option value="year">Last year</option>
-                </select>
               </div>
+              <select
+                value={timeframe}
+                onChange={(e) =>
+                  setTimeframe(e.target.value as "week" | "month" | "year")
+                }
+                className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200">
+                <option value="week">Last 7 days</option>
+                <option value="month">Last 30 days</option>
+                <option value="year">Last year</option>
+              </select>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                    Real-Time Performance
-                  </h2>
-                  <RealTimeMetrics metrics={defaultRealTimeMetrics} />
+          {/* Real-Time & Platform Stats */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 transform transition-all duration-200 hover:shadow-xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                  <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                    Platform Statistics
-                  </h2>
-                  <PlatformStats stats={platformStats} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 mb-8">
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                    Engagement Overview
-                  </h2>
-                  <EngagementChart data={engagementMetrics} />
-                </div>
-              </div>
-
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                  Post Performance
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Real-Time Performance
                 </h2>
-                <PostPerformance data={postAnalytics} />
               </div>
+              <RealTimeMetrics metrics={defaultRealTimeMetrics} />
+            </div>
 
-              <div className="mt-8 flex justify-end">
-                <button
-                  onClick={() => window.print()}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                  Export Report
-                </button>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 transform transition-all duration-200 hover:shadow-xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Platform Statistics
+                </h2>
               </div>
+              <PlatformStats stats={platformStats} />
+            </div>
+          </div>
+
+          {/* Engagement Overview */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 mb-8 transform transition-all duration-200 hover:shadow-xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                <Activity className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Engagement Overview
+              </h2>
+            </div>
+            <EngagementChart data={engagementMetrics} />
+          </div>
+
+          {/* Post Performance */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 transform transition-all duration-200 hover:shadow-xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+                <FileText className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Post Performance
+              </h2>
+            </div>
+            <PostPerformance data={postAnalytics} />
+
+            <div className="mt-8 flex justify-end">
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200 shadow-lg hover:shadow-xl">
+                <Download className="w-5 h-5" />
+                Export Report
+              </button>
             </div>
           </div>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 }
 
