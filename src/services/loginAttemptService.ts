@@ -143,7 +143,7 @@ export class LoginAttemptService {
       const docSnap = await getDoc(docRef);
 
       if (!docSnap.exists()) {
-        // Initialize attempts for new email
+        // First attempt
         await setDoc(docRef, {
           attempts: 0,
           lastAttempt: serverTimestamp(),
@@ -165,7 +165,20 @@ export class LoginAttemptService {
         return MAX_ATTEMPTS;
       }
 
-      return Math.max(0, MAX_ATTEMPTS - data.attempts);
+      // Return remaining attempts
+      const remainingAttempts = MAX_ATTEMPTS - data.attempts;
+      if (remainingAttempts <= 0) {
+        // Lock the account if no attempts remaining
+        const now = Timestamp.now();
+        const lockedUntil = new Timestamp(now.seconds + COOLDOWN_SECONDS, 0);
+        await setDoc(docRef, {
+          ...data,
+          lockedUntil,
+        });
+        return 0;
+      }
+
+      return remainingAttempts;
     } catch (error) {
       console.error("Error getting remaining attempts:", error);
       return MAX_ATTEMPTS;

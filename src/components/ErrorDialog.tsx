@@ -9,16 +9,19 @@ interface ErrorDialogProps {
 
 export function ErrorDialog({ message, onClose, isOpen }: ErrorDialogProps) {
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [displayMessage, setDisplayMessage] = useState(message);
 
   // Extract countdown time from message if it exists
   useEffect(() => {
-    if (isOpen && message.includes("wait")) {
+    if (isOpen && message) {
       const match = message.match(/wait (\d+) seconds/);
       if (match && match[1]) {
         setCountdown(parseInt(match[1], 10));
+        setDisplayMessage(message);
+      } else {
+        setCountdown(null);
+        setDisplayMessage(message);
       }
-    } else {
-      setCountdown(null);
     }
   }, [isOpen, message]);
 
@@ -31,20 +34,18 @@ export function ErrorDialog({ message, onClose, isOpen }: ErrorDialogProps) {
           if (prev === null || prev <= 1) {
             return null;
           }
-          return prev - 1;
+          const newCount = prev - 1;
+          setDisplayMessage(
+            message.replace(/\d+ seconds/, `${newCount} seconds`)
+          );
+          return newCount;
         });
       }, 1000);
     }
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [countdown]);
-
-  // Format the message to show countdown
-  const formattedMessage =
-    countdown !== null
-      ? message.replace(/\d+ seconds/, `${countdown} seconds`)
-      : message;
+  }, [countdown, message]);
 
   // Prevent scrolling when dialog is open
   useEffect(() => {
@@ -82,7 +83,7 @@ export function ErrorDialog({ message, onClose, isOpen }: ErrorDialogProps) {
                 </h3>
                 <div className="mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-300">
-                    {formattedMessage}
+                    {displayMessage}
                   </p>
                 </div>
               </div>

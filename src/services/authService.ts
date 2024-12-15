@@ -41,22 +41,52 @@ interface AuthResponse {
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const getErrorMessage = (error: AuthError): string => {
+const getErrorMessage = async (
+  error: AuthError,
+  email: string
+): Promise<string> => {
+  // First check if account is locked
+  const { canAttempt, remainingTime } = await loginAttemptService.checkAttempts(
+    email
+  );
+  if (!canAttempt && remainingTime) {
+    return `Please wait ${remainingTime} seconds before trying again`;
+  }
+
+  // Get error message based on error code
+  let message = "";
   switch (error.code) {
     case "auth/invalid-credential":
     case "auth/wrong-password":
-      return "Incorrect email or password";
+      message = "Incorrect email or password";
+      break;
     case "auth/user-not-found":
-      return "No account found with this email";
+      message = "No account found with this email";
+      break;
     case "auth/invalid-email":
-      return "Invalid email address";
+      message = "Invalid email address";
+      break;
     case "auth/too-many-requests":
-      return "Too many failed attempts. Please try again later";
+      message = "Too many failed attempts. Please try again later";
+      break;
     case "auth/requires-recent-login":
-      return "Please log in again to change your password";
+      message = "Please log in again to change your password";
+      break;
     default:
-      return "Authentication failed. Please try again";
+      message = "Authentication failed. Please try again";
   }
+
+  // Add remaining attempts if not locked
+  if (canAttempt) {
+    const remainingAttempts = await loginAttemptService.getRemainingAttempts(
+      email
+    );
+    if (remainingAttempts > 0) {
+      message += `\n\nRemaining attempts: ${remainingAttempts}`;
+    }
+  }
+
+  return message;
 };
 
 const handleApiError = async (
@@ -65,30 +95,12 @@ const handleApiError = async (
 ): Promise<never> => {
   let errorMessage = "";
 
-  if (error && typeof error === "object" && "code" in error) {
-    errorMessage = getErrorMessage(error as AuthError);
+  if (error && typeof error === "object" && "code" in error && email) {
+    errorMessage = await getErrorMessage(error as AuthError, email);
   } else if (error instanceof Error) {
     errorMessage = error.message;
   } else {
     errorMessage = "An unexpected error occurred";
-  }
-
-  // Get remaining attempts for login errors
-  if (
-    email &&
-    (errorMessage.includes("Incorrect") || errorMessage.includes("No account"))
-  ) {
-    const remainingAttempts = await loginAttemptService.getRemainingAttempts(
-      email
-    );
-    if (remainingAttempts > 0) {
-      errorMessage += `\n\nRemaining attempts: ${remainingAttempts}`;
-    } else {
-      const { remainingTime } = await loginAttemptService.checkAttempts(email);
-      if (remainingTime) {
-        errorMessage = `Account is temporarily locked. Please wait ${remainingTime} seconds before trying again.`;
-      }
-    }
   }
 
   throw new Error(errorMessage);
@@ -115,7 +127,7 @@ export const loginUser = async (credentials: Credentials): Promise<User> => {
 
     if (!canAttempt) {
       throw new Error(
-        `Account is temporarily locked. Please wait ${remainingTime} seconds before trying again.`
+        `Please wait ${remainingTime} seconds before trying again`
       );
     }
 
@@ -147,7 +159,7 @@ export const loginUser = async (credentials: Credentials): Promise<User> => {
     if (
       credentials.email &&
       error instanceof Error &&
-      !error.message.includes("temporarily locked")
+      !error.message.includes("Please wait")
     ) {
       await loginAttemptService.recordAttempt(credentials.email, false);
     }
