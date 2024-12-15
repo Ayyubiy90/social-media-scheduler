@@ -1,15 +1,21 @@
 import React, { useState } from "react";
-import { Pencil, Settings as SettingsIcon, LogOut } from "lucide-react";
+import {
+  Pencil,
+  Settings as SettingsIcon,
+  LogOut,
+  User,
+  Mail,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
-import { User } from "../services/authService";
+import { User as UserType } from "../services/authService";
 import { ProfilePictureUpload } from "./ProfilePictureUpload";
 import { uploadProfilePicture } from "../services/storageService";
 
 interface ProfileDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  user: User;
+  user: UserType;
 }
 
 export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
@@ -66,47 +72,36 @@ export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" onClick={onClose}>
-      <div
-        className="absolute inset-0 bg-black bg-opacity-25"
-        aria-hidden="true"
-      />
+    <div
+      className="fixed inset-0 z-50 overflow-hidden bg-black bg-opacity-25 backdrop-blur-sm"
+      onClick={onClose}>
       <div
         className="fixed inset-x-4 top-20 md:inset-x-auto md:left-auto md:right-4 md:w-96 z-50"
         onClick={(e) => e.stopPropagation()}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Profile
-                </h2>
-              </div>
-            </div>
-
-            {/* Profile Picture Section */}
-            <div className="flex flex-col items-center">
-              <div className="relative group cursor-pointer hover:scale-105 transform transition-all duration-200">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl transform transition-all duration-200">
+          {/* Header with Profile Picture */}
+          <div className="relative h-32 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-t-xl">
+            <div className="absolute -bottom-12 inset-x-0 flex justify-center">
+              <div className="relative group">
                 {user?.photoURL ? (
-                  <div className="relative group-hover:opacity-90 transition-all">
+                  <div className="relative group-hover:opacity-90 transition-all duration-200">
                     <img
                       src={user.photoURL}
                       alt="Profile"
-                      className="w-20 h-20 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
+                      className="w-24 h-24 rounded-xl object-cover ring-4 ring-white dark:ring-gray-800 shadow-lg"
                     />
-                    <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-20 transition-all duration-200" />
+                    <div className="absolute inset-0 rounded-xl bg-black opacity-0 group-hover:opacity-20 transition-all duration-200" />
                   </div>
                 ) : (
                   <div
-                    className={`w-20 h-20 rounded-full ${getProfileColor(
+                    className={`w-24 h-24 rounded-xl ${getProfileColor(
                       user?.email
-                    )} flex items-center justify-center text-white text-2xl font-semibold ring-2 ring-white dark:ring-gray-800 group-hover:opacity-90 transition-opacity`}>
+                    )} flex items-center justify-center text-white text-3xl font-bold ring-4 ring-white dark:ring-gray-800 shadow-lg group-hover:opacity-90 transition-all duration-200`}>
                     {getInitial(user?.email)}
                   </div>
                 )}
                 <button
-                  className={`absolute bottom-0 right-0 p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all group-hover:scale-110 z-10 cursor-pointer ${
+                  className={`absolute -bottom-2 -right-2 p-2 bg-white dark:bg-gray-700 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all duration-200 group-hover:scale-110 ${
                     uploading ? "opacity-50 cursor-not-allowed" : ""
                   }`}
                   onClick={() => !uploading && setIsUploadOpen(true)}
@@ -115,32 +110,50 @@ export function ProfileDialog({ isOpen, onClose, user }: ProfileDialogProps) {
                   <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                 </button>
               </div>
+            </div>
+          </div>
 
-              {/* User Info */}
-              <div className="mt-4 text-center">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {user?.displayName || "User"}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {user?.email}
-                </p>
+          {/* User Info */}
+          <div className="mt-16 px-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <User className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Name
+                  </p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {user?.displayName || "User"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <Mail className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Email
+                  </p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {user?.email}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="p-4">
+          <div className="p-6 mt-6 space-y-3">
             <button
               onClick={handleSettings}
-              className="w-full mb-2 px-4 py-2 text-left flex items-center gap-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+              className="w-full px-4 py-3 flex items-center gap-3 text-gray-700 dark:text-gray-200 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-all duration-200">
               <SettingsIcon className="w-5 h-5" />
-              <span>Profile Settings</span>
+              <span className="font-medium">Profile Settings</span>
             </button>
             <button
               onClick={handleLogout}
-              className="w-full px-4 py-2 text-left flex items-center gap-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+              className="w-full px-4 py-3 flex items-center gap-3 text-red-600 dark:text-red-400 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200">
               <LogOut className="w-5 h-5" />
-              <span>Logout</span>
+              <span className="font-medium">Logout</span>
             </button>
           </div>
         </div>
