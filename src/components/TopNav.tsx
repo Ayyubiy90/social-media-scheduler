@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   PanelRightOpen,
   PanelRightClose,
@@ -24,6 +24,7 @@ interface TopNavProps {
 
 export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useUser();
   const { unreadCount } = useNotifications();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -31,7 +32,6 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
 
   const handleMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log("Menu button clicked");
     onSidebarToggle();
   };
 
@@ -53,54 +53,71 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
     return colors[index];
   };
 
+  const navItems = [
+    {
+      path: "/dashboard",
+      icon: LayoutDashboard,
+      label: "Dashboard",
+    },
+    {
+      path: "/analytics",
+      icon: BarChart2,
+      label: "Analytics",
+    },
+    {
+      path: "/calendar",
+      icon: Calendar,
+      label: "Calendar",
+    },
+    {
+      path: "/create-post",
+      icon: FilePlus2,
+      label: "Create Post",
+    },
+    {
+      path: "/settings",
+      icon: Settings,
+      label: "Settings",
+    },
+  ];
+
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-30">
+      <nav className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-30 shadow-sm">
         <div className="h-full max-w-7xl mx-auto px-4 flex items-center justify-between">
           {/* Left section with logo */}
-          <div className="flex items-center">
-            <CalendarCheck className="h-6 w-6 mr-2 text-gray-500 dark:text-gray-200" />
-            <span className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
+              <CalendarCheck className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <span className="text-lg font-bold text-gray-900 dark:text-white truncate">
               Social Media Scheduler
             </span>
           </div>
 
           {/* Center section with navigation buttons - only visible on desktop */}
-          <div className="hidden md:flex items-center space-x-4">
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <LayoutDashboard className="w-5 h-5" />
-              Dashboard
-            </button>
-            <button
-              onClick={() => navigate("/analytics")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <BarChart2 className="w-5 h-5" />
-              Analytics
-            </button>
-            <button
-              onClick={() => navigate("/calendar")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <Calendar className="w-5 h-5" />
-              Calendar
-            </button>
-            <button
-              onClick={() => navigate("/create-post")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <FilePlus2 className="w-5 h-5" />
-              Create Post
-            </button>
-            <button
-              onClick={() => navigate("/settings")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <Settings className="w-5 h-5" />
-              Settings
-            </button>
+          <div className="hidden md:flex items-center space-x-2">
+            {navItems.map((item) => (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`
+                  inline-flex items-center gap-2 px-4 py-2 
+                  text-sm font-medium rounded-lg transition-all duration-200
+                  ${
+                    location.pathname === item.path
+                      ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  }
+                `}>
+                <item.icon className="w-5 h-5" />
+                {item.label}
+              </button>
+            ))}
           </div>
 
           {/* Right section */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-4">
             {/* Theme Toggle - visible on desktop */}
             <div className="hidden md:flex items-center">
               <ThemeToggle />
@@ -109,10 +126,10 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
             {/* Notification button - visible on desktop */}
             <button
               onClick={() => setIsNotificationsOpen(true)}
-              className="hidden md:inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative">
+              className="hidden md:inline-flex items-center justify-center w-10 h-10 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 relative">
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
                   {unreadCount}
                 </span>
               )}
@@ -127,17 +144,17 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
                 {user?.photoURL ? (
                   <div className="relative">
                     <img
-                      className="h-8 w-8 rounded-full object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500"
+                      className="h-10 w-10 rounded-lg object-cover transition-all duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-sm"
                       src={user.photoURL}
                       alt={`${user?.displayName || "User"}'s avatar`}
                     />
-                    <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
+                    <div className="absolute inset-0 rounded-lg bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
                   </div>
                 ) : (
                   <div
-                    className={`h-8 w-8 rounded-full ${getProfileColor(
+                    className={`h-10 w-10 rounded-lg ${getProfileColor(
                       user?.email
-                    )} flex items-center justify-center text-white text-sm font-semibold transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500`}
+                    )} flex items-center justify-center text-white text-sm font-semibold transition-all duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-sm`}
                   >
                     {getInitial(user?.email)}
                   </div>
@@ -148,7 +165,15 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
             {/* Menu button - only visible on mobile */}
             <button
               onClick={handleMenuClick}
-              className="block md:hidden p-2 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+              className={`
+                block md:hidden p-2 rounded-lg
+                transition-all duration-200
+                ${
+                  isSidebarOpen
+                    ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }
+              `}
               aria-label="Toggle navigation">
               {isSidebarOpen ? (
                 <PanelRightClose className="w-5 h-5" />
