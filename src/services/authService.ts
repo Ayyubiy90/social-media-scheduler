@@ -100,7 +100,7 @@ const getErrorMessage = async (
       email
     );
     if (remainingAttempts > 0) {
-      message = `${message}\n\nRemaining attempts: ${remainingAttempts}`;
+      message = `${message} (${remainingAttempts} attempts remaining)`;
     }
   }
 
