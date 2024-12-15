@@ -78,7 +78,8 @@ export class LoginAttemptService {
       }
 
       return { canAttempt: true };
-    } catch {
+    } catch (error) {
+      console.error("Error checking attempts:", error);
       // Default to allowing the attempt if there's an error
       return { canAttempt: true };
     }
@@ -166,19 +167,7 @@ export class LoginAttemptService {
       }
 
       // Return remaining attempts
-      const remainingAttempts = MAX_ATTEMPTS - data.attempts;
-      if (remainingAttempts <= 0) {
-        // Lock the account if no attempts remaining
-        const now = Timestamp.now();
-        const lockedUntil = new Timestamp(now.seconds + COOLDOWN_SECONDS, 0);
-        await setDoc(docRef, {
-          ...data,
-          lockedUntil,
-        });
-        return 0;
-      }
-
-      return remainingAttempts;
+      return Math.max(0, MAX_ATTEMPTS - data.attempts);
     } catch (error) {
       console.error("Error getting remaining attempts:", error);
       return MAX_ATTEMPTS;

@@ -53,7 +53,7 @@ const getErrorMessage = async (
     return `Please wait ${remainingTime} seconds before trying again`;
   }
 
-  // Get error message based on error code
+  // Get base error message
   let message = "";
   switch (error.code) {
     case "auth/invalid-credential":
@@ -82,7 +82,7 @@ const getErrorMessage = async (
       email
     );
     if (remainingAttempts > 0) {
-      message += `\n\nRemaining attempts: ${remainingAttempts}`;
+      message = `${message}\n\nRemaining attempts: ${remainingAttempts}`;
     }
   }
 
