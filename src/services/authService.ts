@@ -45,6 +45,8 @@ const mapFirebaseUserToUser = async (
   firebaseUser: FirebaseUser
 ): Promise<User> => {
   const token = await firebaseUser.getIdToken();
+  // Store token in localStorage
+  localStorage.setItem("token", token);
   return {
     token,
     uid: firebaseUser.uid,
@@ -257,6 +259,7 @@ export const logoutUser = async (): Promise<void> => {
     await signOut(auth);
 
     // Clear any stored session data
+    localStorage.removeItem("token");
     localStorage.removeItem("user");
     sessionStorage.clear();
   } catch (error) {
@@ -264,6 +267,7 @@ export const logoutUser = async (): Promise<void> => {
     // Still attempt to clear local state even if backend logout fails
     const auth = getAuth();
     await signOut(auth);
+    localStorage.removeItem("token");
     localStorage.removeItem("user");
     sessionStorage.clear();
   }

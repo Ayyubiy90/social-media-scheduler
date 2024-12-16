@@ -3,37 +3,36 @@ const express = require("express");
 const cors = require("cors");
 const admin = require("firebase-admin");
 const session = require("express-session");
-const passport = require("./src/middleware/oauthMiddleware.cjs");
+const passport = require("passport");
+require("./src/middleware/oauthMiddleware.cjs");
+const { verifyToken, verifySession } = require("./src/middleware/authMiddleware.cjs");
+const { validatePostMiddleware } = require("./src/middleware/postValidation.cjs");
 const {
   createPostJob,
   cancelPostJob,
   reschedulePostJob,
 } = require("./jobQueue.cjs");
-const authRoutes = require("./authRoutes.cjs");
-const notificationRoutes = require("./notificationRoutes.cjs");
-const analyticsRoutes = require("./analyticsRoutes.cjs");
-const setupCollections = require("./dbSetup.cjs");
 
 const app = express();
 const port = 5000;
 
 // Debug log to check environment variables
-console.log(
-  "Environment check - Session Secret exists:",
-  !!process.env.SESSION_SECRET
-);
-console.log(
-  "Environment check - Google Client ID exists:",
-  !!process.env.GOOGLE_CLIENT_ID
-);
+console.log("Environment check - Session Secret exists:", !!process.env.SESSION_SECRET);
+console.log("Environment check - OAuth credentials exist:", {
+  twitter: {
+    apiKeyExists: !!process.env.TWITTER_API_KEY,
+    apiSecretExists: !!process.env.TWITTER_API_SECRET,
+    callbackUrlExists: !!process.env.TWITTER_CALLBACK_URL
+  }
+});
 
 // CORS configuration
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
     exposedHeaders: ["set-cookie"],
   })
 );
@@ -43,8 +42,9 @@ app.options("*", cors());
 
 // Body parser middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Session middleware
+// Session middleware - MUST be before passport initialization
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "default-secret-key",
@@ -53,24 +53,29 @@ app.use(
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      domain: process.env.COOKIE_DOMAIN || "localhost",
+      maxAge: parseInt(process.env.COOKIE_MAX_AGE) || 24 * 60 * 60 * 1000,
+      sameSite: "lax"
     },
+    name: 'social-scheduler.sid'
   })
 );
 
-// Initialize Passport
+// Initialize Passport and restore authentication state from session
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Route Middleware
-const {
-  verifyToken,
-  verifySession,
-} = require("./src/middleware/authMiddleware.cjs");
-const {
-  validatePostMiddleware,
-} = require("./src/middleware/postValidation.cjs");
+// Import routes
+const authRoutes = require("./authRoutes.cjs");
+const notificationRoutes = require("./notificationRoutes.cjs");
+const socialRoutes = require("./socialRoutes.cjs");
+const analyticsRoutes = require("./analyticsRoutes.cjs");
+
+// Mount routes - MUST be after passport initialization
+app.use("/auth", authRoutes);
+app.use("/notifications", notificationRoutes);
+app.use("/analytics", analyticsRoutes);
+app.use("/social", socialRoutes);
 
 // Initialize Firebase and start server
 const initializeApp = async () => {
@@ -78,11 +83,6 @@ const initializeApp = async () => {
     // Initialize Firebase with retry logic
     const firebaseInit = require("./firebaseConfig.cjs");
     const db = await firebaseInit;
-
-    // Setup routes that depend on db
-    app.use("/auth", authRoutes);
-    app.use("/notifications", notificationRoutes);
-    app.use("/analytics", analyticsRoutes);
 
     // Post management endpoints
     app.post("/schedule", verifyToken, verifySession, (req, res) => {
@@ -249,12 +249,11 @@ const initializeApp = async () => {
         );
     });
 
-    // Initialize database collections
-    await setupCollections(db);
-
     // Start the server
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);
+      console.log(`OAuth callback URLs should be configured as:`);
+      console.log(`Twitter: http://localhost:${port}/social/twitter/callback`);
     });
   } catch (error) {
     console.error("Failed to initialize application:", error);

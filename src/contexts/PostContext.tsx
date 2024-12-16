@@ -4,6 +4,7 @@ import React, {
   useState,
   useCallback,
   ReactNode,
+  useEffect,
 } from "react";
 import { useUser } from "./UserContext";
 import { Post } from "../types/database";
@@ -54,14 +55,24 @@ export function PostProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const allPosts = await postService.getPosts();
-      setPosts(allPosts);
+      setPosts(allPosts || []); // Ensure posts is an array even if null/undefined is returned
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch posts");
+      setPosts([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
   }, [user?.uid]);
+
+  // Fetch posts when user changes
+  useEffect(() => {
+    if (user?.uid) {
+      fetchPosts();
+    } else {
+      setPosts([]); // Clear posts when user logs out
+    }
+  }, [user?.uid, fetchPosts]);
 
   const createPost = async (
     content: string,
@@ -216,9 +227,9 @@ export function PostProvider({ children }: { children: ReactNode }) {
     return postService.validatePostContent(content, platform);
   };
 
-  // Computed properties
-  const drafts = posts.filter((post) => post.status === "draft");
-  const scheduledPosts = posts.filter((post) => post.status === "scheduled");
+  // Computed properties - ensure posts is an array before filtering
+  const drafts = Array.isArray(posts) ? posts.filter((post) => post.status === "draft") : [];
+  const scheduledPosts = Array.isArray(posts) ? posts.filter((post) => post.status === "scheduled") : [];
 
   return (
     <PostContext.Provider

@@ -1,138 +1,43 @@
-require("dotenv").config({ path: "../../.env" });
+require("dotenv").config();
 const passport = require("passport");
-const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const FacebookStrategy = require("passport-facebook").Strategy;
 const TwitterStrategy = require("passport-twitter").Strategy;
-const LinkedInStrategy = require("passport-linkedin-oauth2").Strategy;
 const admin = require("firebase-admin");
 const db = require("../../firebaseConfig.cjs");
 
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+
 // Debug log to check environment variables
-console.log(
-  "Environment check - Google Client ID exists:",
-  !!process.env.GOOGLE_CLIENT_ID
-);
+console.log("OAuth Configuration:", {
+  twitter: {
+    apiKeyExists: !!process.env.TWITTER_API_KEY,
+    apiSecretExists: !!process.env.TWITTER_API_SECRET,
+    callbackUrlExists: !!process.env.TWITTER_CALLBACK_URL
+  }
+});
 
-// Configure Google Strategy if credentials exist
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  passport.use(
-    new GoogleStrategy(
-      {
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "/auth/google/callback",
-      },
-      async (accessToken, refreshToken, profile, done) => {
-        try {
-          const userRef = await db
-            .collection("users")
-            .where("googleId", "==", profile.id)
-            .get();
-
-          if (!userRef.empty) {
-            const user = userRef.docs[0].data();
-            const updateData = {
-              accessToken,
-              lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-            };
-            if (refreshToken) {
-              updateData.refreshToken = refreshToken;
-            }
-            await userRef.docs[0].ref.update(updateData);
-            return done(null, { id: userRef.docs[0].id, ...user });
-          }
-
-          const newUser = {
-            googleId: profile.id,
-            email: profile.emails[0].value,
-            displayName: profile.displayName,
-            accessToken,
-            provider: "google",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-          };
-          if (refreshToken) {
-            newUser.refreshToken = refreshToken;
-          }
-
-          const docRef = await db.collection("users").add(newUser);
-          return done(null, { id: docRef.id, ...newUser });
-        } catch (error) {
-          console.error("Error in Google Strategy:", error);
-          return done(error, null);
-        }
-      }
-    )
-  );
-} else {
-  console.warn("Google OAuth credentials are missing");
-}
-
-// Configure Facebook Strategy if credentials exist
-if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
-  passport.use(
-    new FacebookStrategy(
-      {
-        clientID: process.env.FACEBOOK_APP_ID,
-        clientSecret: process.env.FACEBOOK_APP_SECRET,
-        callbackURL: "/auth/facebook/callback",
-        profileFields: ["id", "emails", "name"],
-      },
-      async (accessToken, refreshToken, profile, done) => {
-        try {
-          const userRef = await db
-            .collection("users")
-            .where("facebookId", "==", profile.id)
-            .get();
-
-          if (!userRef.empty) {
-            const user = userRef.docs[0].data();
-            const updateData = {
-              accessToken,
-              lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-            };
-            if (refreshToken) {
-              updateData.refreshToken = refreshToken;
-            }
-            await userRef.docs[0].ref.update(updateData);
-            return done(null, { id: userRef.docs[0].id, ...user });
-          }
-
-          const newUser = {
-            facebookId: profile.id,
-            email: profile.emails[0].value,
-            displayName: `${profile.name.givenName} ${profile.name.familyName}`,
-            accessToken,
-            provider: "facebook",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-          };
-          if (refreshToken) {
-            newUser.refreshToken = refreshToken;
-          }
-
-          const docRef = await db.collection("users").add(newUser);
-          return done(null, { id: docRef.id, ...newUser });
-        } catch (error) {
-          console.error("Error in Facebook Strategy:", error);
-          return done(error, null);
-        }
-      }
-    )
-  );
-}
-
-// Configure Twitter Strategy if credentials exist
+// Configure Twitter Strategy
 if (process.env.TWITTER_API_KEY && process.env.TWITTER_API_SECRET) {
   passport.use(
     new TwitterStrategy(
       {
         consumerKey: process.env.TWITTER_API_KEY,
         consumerSecret: process.env.TWITTER_API_SECRET,
-        callbackURL: "/auth/twitter/callback",
+        callbackURL: process.env.TWITTER_CALLBACK_URL,
+        includeEmail: true,
+        passReqToCallback: true
       },
-      async (token, tokenSecret, profile, done) => {
+      async (req, token, tokenSecret, profile, done) => {
         try {
+          console.log("Twitter Auth Response:", {
+            token,
+            tokenSecret,
+            profile: {
+              id: profile.id,
+              displayName: profile.displayName,
+              username: profile.username
+            }
+          });
+
           const userRef = await db
             .collection("users")
             .where("twitterId", "==", profile.id)
@@ -140,82 +45,44 @@ if (process.env.TWITTER_API_KEY && process.env.TWITTER_API_SECRET) {
 
           if (!userRef.empty) {
             const user = userRef.docs[0].data();
-            await userRef.docs[0].ref.update({
-              token,
-              tokenSecret,
+            const updateData = {
               lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-            });
-            return done(null, { id: userRef.docs[0].id, ...user });
+              twitterProfile: {
+                id: profile.id,
+                username: profile.username,
+                name: profile.displayName,
+                profile_image_url: profile.photos?.[0]?.value
+              },
+              twitterConnected: true,
+              twitterConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
+              twitterToken: token,
+              twitterTokenSecret: tokenSecret
+            };
+            await userRef.docs[0].ref.update(updateData);
+            return done(null, { id: userRef.docs[0].id, ...user, ...updateData });
           }
 
           const newUser = {
             twitterId: profile.id,
             displayName: profile.displayName,
-            token,
-            tokenSecret,
-            provider: "twitter",
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             lastLogin: admin.firestore.FieldValue.serverTimestamp(),
+            twitterProfile: {
+              id: profile.id,
+              username: profile.username,
+              name: profile.displayName,
+              profile_image_url: profile.photos?.[0]?.value
+            },
+            twitterConnected: true,
+            twitterConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
+            twitterToken: token,
+            twitterTokenSecret: tokenSecret
           };
 
           const docRef = await db.collection("users").add(newUser);
           return done(null, { id: docRef.id, ...newUser });
         } catch (error) {
-          console.error("Error in Twitter Strategy:", error);
-          return done(error, null);
-        }
-      }
-    )
-  );
-}
-
-// Configure LinkedIn Strategy if credentials exist
-if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
-  passport.use(
-    new LinkedInStrategy(
-      {
-        clientID: process.env.LINKEDIN_CLIENT_ID,
-        clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
-        callbackURL: "/auth/linkedin/callback",
-        scope: ["r_emailaddress", "r_liteprofile", "w_member_social"],
-      },
-      async (accessToken, refreshToken, profile, done) => {
-        try {
-          const userRef = await db
-            .collection("users")
-            .where("linkedinId", "==", profile.id)
-            .get();
-
-          if (!userRef.empty) {
-            const user = userRef.docs[0].data();
-            const updateData = {
-              accessToken,
-              lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-            };
-            if (refreshToken) {
-              updateData.refreshToken = refreshToken;
-            }
-            await userRef.docs[0].ref.update(updateData);
-            return done(null, { id: userRef.docs[0].id, ...user });
-          }
-
-          const newUser = {
-            linkedinId: profile.id,
-            email: profile.emails[0].value,
-            displayName: profile.displayName,
-            accessToken,
-            provider: "linkedin",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-          };
-          if (refreshToken) {
-            newUser.refreshToken = refreshToken;
-          }
-
-          const docRef = await db.collection("users").add(newUser);
-          return done(null, { id: docRef.id, ...newUser });
-        } catch (error) {
-          console.error("Error in LinkedIn Strategy:", error);
+          console.error("Twitter Strategy Error:", error);
           return done(error, null);
         }
       }
@@ -225,18 +92,22 @@ if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
 
 // Serialize user for the session
 passport.serializeUser((user, done) => {
+  console.log("Serializing user:", user.id);
   done(null, user.id);
 });
 
 // Deserialize user from the session
 passport.deserializeUser(async (id, done) => {
   try {
+    console.log("Deserializing user:", id);
     const userRef = await db.collection("users").doc(id).get();
     if (!userRef.exists) {
+      console.error("User not found during deserialization:", id);
       return done(new Error("User not found"), null);
     }
     done(null, { id, ...userRef.data() });
   } catch (error) {
+    console.error("Deserialize User Error:", error);
     done(error, null);
   }
 });

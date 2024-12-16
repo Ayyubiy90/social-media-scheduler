@@ -1,10 +1,9 @@
-const { getAuth } = require('firebase-admin/auth');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getAuth } = require("firebase-admin/auth");
+const getDb = require("../../firebaseConfig.cjs");
 
 class AuthService {
   constructor() {
     this.auth = getAuth();
-    this.db = getFirestore();
   }
 
   async registerUser(userData) {
@@ -13,18 +12,28 @@ class AuthService {
       const userRecord = await this.auth.createUser({
         email,
         password,
-        displayName
-      });
-      
-      await this.db.collection('users').doc(userRecord.uid).set({
-        email,
         displayName,
-        createdAt: new Date().toISOString(),
-        settings: {
-          emailNotifications: true,
-          pushNotifications: false
-        }
       });
+
+      const db = await getDb;
+      await db
+        .collection("users")
+        .doc(userRecord.uid)
+        .set({
+          email,
+          displayName,
+          createdAt: new Date().toISOString(),
+          settings: {
+            emailNotifications: true,
+            pushNotifications: false,
+          },
+          notificationSettings: {
+            prePostReminders: true,
+            reminderTime: 15,
+            emailNotifications: true,
+            pushNotifications: true,
+          },
+        });
 
       return userRecord;
     } catch (error) {
@@ -41,20 +50,21 @@ class AuthService {
       return {
         uid: userRecord.uid,
         email: userRecord.email,
-        token: 'test-token' // In production, generate a real token
+        token: "test-token", // In production, generate a real token
       };
     } catch (error) {
-      throw new Error('Invalid credentials');
+      throw new Error("Invalid credentials");
     }
   }
 
   async getUserById(uid) {
     try {
       const userRecord = await this.auth.getUser(uid);
-      const userDoc = await this.db.collection('users').doc(uid).get();
+      const db = await getDb;
+      const userDoc = await db.collection("users").doc(uid).get();
       return {
         ...userRecord,
-        ...userDoc.data()
+        ...userDoc.data(),
       };
     } catch (error) {
       throw new Error(`Error getting user: ${error.message}`);
@@ -64,13 +74,13 @@ class AuthService {
   async updateUser(uid, updateData) {
     try {
       const { email, password, displayName, ...customClaims } = updateData;
-      
+
       // Update auth profile
       const authUpdate = {};
       if (email) authUpdate.email = email;
       if (password) authUpdate.password = password;
       if (displayName) authUpdate.displayName = displayName;
-      
+
       if (Object.keys(authUpdate).length > 0) {
         await this.auth.updateUser(uid, authUpdate);
       }
@@ -81,10 +91,11 @@ class AuthService {
       }
 
       // Update Firestore document
-      const userDocRef = this.db.collection('users').doc(uid);
+      const db = await getDb;
+      const userDocRef = db.collection("users").doc(uid);
       await userDocRef.update({
         ...updateData,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       });
 
       return await this.getUserById(uid);
@@ -96,7 +107,8 @@ class AuthService {
   async deleteUser(uid) {
     try {
       await this.auth.deleteUser(uid);
-      await this.db.collection('users').doc(uid).delete();
+      const db = await getDb;
+      await db.collection("users").doc(uid).delete();
       return true;
     } catch (error) {
       throw new Error(`Error deleting user: ${error.message}`);
@@ -134,8 +146,9 @@ class AuthService {
       // 1. Revoke refresh tokens
       // 2. Clear any server-side sessions
       // 3. Update user's last logout timestamp
-      await this.db.collection('users').doc(uid).update({
-        lastLogout: new Date().toISOString()
+      const db = await getDb;
+      await db.collection("users").doc(uid).update({
+        lastLogout: new Date().toISOString(),
       });
       return true;
     } catch (error) {

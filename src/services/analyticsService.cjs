@@ -1,9 +1,14 @@
 const admin = require("firebase-admin");
-const db = require("../../firebaseConfig.cjs");
+const getDb = require("../../firebaseConfig.cjs");
 
 class AnalyticsService {
+  static async getDb() {
+    return await getDb;
+  }
+
   static async updatePostMetrics(postId, platform, metrics) {
     try {
+      const db = await this.getDb();
       const postRef = db.collection("posts").doc(postId);
       const post = await postRef.get();
 
@@ -28,6 +33,7 @@ class AnalyticsService {
 
   static async getPostAnalytics(postId) {
     try {
+      const db = await this.getDb();
       const postRef = db.collection("posts").doc(postId);
       const post = await postRef.get();
 
@@ -44,6 +50,7 @@ class AnalyticsService {
 
   static async getPlatformStats(userId, platform) {
     try {
+      const db = await this.getDb();
       const postsRef = db.collection("posts");
       const posts = await postsRef
         .where("userId", "==", userId)
@@ -86,11 +93,16 @@ class AnalyticsService {
 
   static async getEngagementMetrics(userId, startDate, endDate) {
     try {
+      const db = await this.getDb();
       const postsRef = db.collection("posts");
-      
+
       // Convert string dates to Firestore Timestamps
-      const startTimestamp = admin.firestore.Timestamp.fromDate(new Date(startDate));
-      const endTimestamp = admin.firestore.Timestamp.fromDate(new Date(endDate));
+      const startTimestamp = admin.firestore.Timestamp.fromDate(
+        new Date(startDate)
+      );
+      const endTimestamp = admin.firestore.Timestamp.fromDate(
+        new Date(endDate)
+      );
 
       const posts = await postsRef
         .where("userId", "==", userId)
@@ -142,6 +154,7 @@ class AnalyticsService {
 
   static async getEngagementHeatmap(userId, platform, timeframe) {
     try {
+      const db = await this.getDb();
       const postsRef = db.collection("posts");
       const posts = await postsRef
         .where("userId", "==", userId)

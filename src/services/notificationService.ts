@@ -1,6 +1,6 @@
-import axios from "axios";
 import { getMessaging, getToken } from "firebase/messaging";
 import { initializeApp, getApp } from "firebase/app";
+import axiosInstance from "../config/axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const firebaseConfig = {
@@ -43,15 +43,10 @@ export interface Notification {
 export const notificationService = {
   // Get user's notification settings
   async getSettings(): Promise<NotificationSettings> {
-    const token = localStorage.getItem("token");
-    const response = await axios.get<{
+    const response = await axiosInstance.get<{
       success: boolean;
       settings: NotificationSettings;
-    }>(`${API_URL}/notifications/settings`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    }>(`${API_URL}/notifications/settings`);
     if (!response.data.success) {
       throw new Error("Failed to get notification settings");
     }
@@ -62,19 +57,10 @@ export const notificationService = {
   async updateSettings(
     settings: Partial<NotificationSettings>
   ): Promise<NotificationSettings> {
-    const token = localStorage.getItem("token");
-    const response = await axios.put<{
+    const response = await axiosInstance.put<{
       success: boolean;
       settings: NotificationSettings;
-    }>(
-      `${API_URL}/notifications/settings`,
-      { preferences: settings },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    }>(`${API_URL}/notifications/settings`, { preferences: settings });
     if (!response.data.success) {
       throw new Error("Failed to update notification settings");
     }
@@ -86,15 +72,9 @@ export const notificationService = {
     postId: string,
     publishTime: Date
   ): Promise<void> {
-    const token = localStorage.getItem("token");
-    const response = await axios.post<{ success: boolean }>(
+    const response = await axiosInstance.post<{ success: boolean }>(
       `${API_URL}/notifications/schedule/pre-post`,
-      { postId, publishTime },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { postId, publishTime }
     );
     if (!response.data.success) {
       throw new Error("Failed to schedule notification");
@@ -109,14 +89,10 @@ export const notificationService = {
       type?: string;
     } = {}
   ): Promise<Notification[]> {
-    const token = localStorage.getItem("token");
-    const response = await axios.get<{
+    const response = await axiosInstance.get<{
       success: boolean;
       notifications: Notification[];
     }>(`${API_URL}/notifications`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       params: options,
     });
     if (!response.data.success) {
@@ -127,15 +103,9 @@ export const notificationService = {
 
   // Mark notification as read
   async markAsRead(notificationId: string): Promise<void> {
-    const token = localStorage.getItem("token");
-    const response = await axios.put<{ success: boolean }>(
+    const response = await axiosInstance.put<{ success: boolean }>(
       `${API_URL}/notifications/${notificationId}/read`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      {}
     );
     if (!response.data.success) {
       throw new Error("Failed to mark notification as read");
@@ -161,15 +131,9 @@ export const notificationService = {
 
         if (currentToken) {
           // Save FCM token to backend
-          const token = localStorage.getItem("token");
-          const response = await axios.post<{ success: boolean }>(
+          const response = await axiosInstance.post<{ success: boolean }>(
             `${API_URL}/notifications/token`,
-            { fcmToken: currentToken },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+            { fcmToken: currentToken }
           );
           return response.data.success;
         }
@@ -185,15 +149,9 @@ export const notificationService = {
 
   // Test sending an immediate notification
   async sendTestNotification(title: string, message: string): Promise<void> {
-    const token = localStorage.getItem("token");
-    const response = await axios.post<{ success: boolean }>(
+    const response = await axiosInstance.post<{ success: boolean }>(
       `${API_URL}/notifications/send`,
-      { title, message, type: "general" },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { title, message, type: "general" }
     );
     if (!response.data.success) {
       throw new Error("Failed to send test notification");

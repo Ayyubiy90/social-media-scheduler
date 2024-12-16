@@ -1,5 +1,6 @@
 const admin = require("firebase-admin");
 const Queue = require("bull");
+const getDb = require("../../firebaseConfig.cjs");
 
 // Configure notification queue with Redis
 let notificationQueue;
@@ -15,19 +16,21 @@ try {
     },
   });
 
-  notificationQueue.on('error', (error) => {
-    console.error('Queue error:', error);
+  notificationQueue.on("error", (error) => {
+    console.error("Queue error:", error);
   });
 
-  notificationQueue.on('failed', (job, error) => {
+  notificationQueue.on("failed", (job, error) => {
     console.error(`Job ${job.id} failed:`, error);
   });
 } catch (error) {
-  console.error('Failed to initialize notification queue:', error);
+  console.error("Failed to initialize notification queue:", error);
   // Continue without queue functionality
   notificationQueue = {
     add: async () => {
-      console.warn('Queue not available, notification will be sent immediately');
+      console.warn(
+        "Queue not available, notification will be sent immediately"
+      );
       return null;
     },
     process: () => {},
@@ -37,14 +40,11 @@ try {
 // Update or register FCM token
 const updateFCMToken = async (userId, fcmToken) => {
   try {
-    await admin
-      .firestore()
-      .collection("users")
-      .doc(userId)
-      .update({
-        fcmToken,
-        fcmTokenUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+    const db = await getDb;
+    await db.collection("users").doc(userId).update({
+      fcmToken,
+      fcmTokenUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return { success: true };
   } catch (error) {
     console.error("Error updating FCM token:", error);
@@ -55,11 +55,8 @@ const updateFCMToken = async (userId, fcmToken) => {
 // Function to send notifications using Firebase Cloud Messaging
 const sendNotification = async (userId, notification) => {
   try {
-    const userRef = await admin
-      .firestore()
-      .collection("users")
-      .doc(userId)
-      .get();
+    const db = await getDb;
+    const userRef = await db.collection("users").doc(userId).get();
     if (!userRef.exists) {
       throw new Error("User not found.");
     }
@@ -88,16 +85,13 @@ const sendNotification = async (userId, notification) => {
     const response = await admin.messaging().send(message);
 
     // Log notification
-    await admin
-      .firestore()
-      .collection("notifications")
-      .add({
-        userId,
-        ...notification,
-        status: "sent",
-        sentAt: admin.firestore.FieldValue.serverTimestamp(),
-        fcmResponse: response,
-      });
+    await db.collection("notifications").add({
+      userId,
+      ...notification,
+      status: "sent",
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      fcmResponse: response,
+    });
 
     return {
       success: true,
@@ -142,8 +136,8 @@ const schedulePrePostNotification = async (userId, postId, publishTime) => {
     });
 
     // Store notification schedule in Firestore
-    await admin
-      .firestore()
+    const db = await getDb;
+    await db
       .collection("notifications")
       .doc(job.id)
       .set({
@@ -182,7 +176,8 @@ const createNotificationSettings = async (userId, preferences = {}) => {
       ...preferences,
     };
 
-    const userRef = await admin.firestore().collection("users").doc(userId);
+    const db = await getDb;
+    const userRef = db.collection("users").doc(userId);
     await userRef.set(
       { notificationSettings: defaultSettings },
       { merge: true }
@@ -201,11 +196,8 @@ const createNotificationSettings = async (userId, preferences = {}) => {
 // Get user's notification settings
 const getNotificationSettings = async (userId) => {
   try {
-    const userRef = await admin
-      .firestore()
-      .collection("users")
-      .doc(userId)
-      .get();
+    const db = await getDb;
+    const userRef = await db.collection("users").doc(userId).get();
     if (!userRef.exists) {
       throw new Error("User not found.");
     }
@@ -220,7 +212,8 @@ const getNotificationSettings = async (userId) => {
 // Update notification settings
 const updateNotificationSettings = async (userId, preferences) => {
   try {
-    const userRef = await admin.firestore().collection("users").doc(userId);
+    const db = await getDb;
+    const userRef = db.collection("users").doc(userId);
     await userRef.update({ notificationSettings: preferences });
     return {
       success: true,
@@ -237,8 +230,8 @@ const updateNotificationSettings = async (userId, preferences) => {
 const getUserNotifications = async (userId, options = {}) => {
   try {
     const { limit = 20, status, type } = options;
-    let query = admin
-      .firestore()
+    const db = await getDb;
+    let query = db
       .collection("notifications")
       .where("userId", "==", userId)
       .orderBy("createdAt", "desc");
@@ -257,7 +250,7 @@ const getUserNotifications = async (userId, options = {}) => {
     }));
     return {
       success: true,
-      notifications
+      notifications,
     };
   } catch (error) {
     console.error("Error fetching notifications:", error);
@@ -268,19 +261,16 @@ const getUserNotifications = async (userId, options = {}) => {
 // Mark notification as read
 const markNotificationAsRead = async (notificationId) => {
   try {
-    await admin
-      .firestore()
-      .collection("notifications")
-      .doc(notificationId)
-      .update({
-        read: true,
-        readAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    return { 
-      success: true, 
+    const db = await getDb;
+    await db.collection("notifications").doc(notificationId).update({
+      read: true,
+      readAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return {
+      success: true,
       result: {
-        message: "Notification marked as read"
-      }
+        message: "Notification marked as read",
+      },
     };
   } catch (error) {
     console.error("Error marking notification as read:", error);

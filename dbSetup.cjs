@@ -15,7 +15,8 @@ async function setupCollections(db) {
     }
 
     try {
-      // Create required indexes
+      // Create required indexes by creating and deleting dummy documents
+      // Posts index
       await db
         .collection("posts")
         .doc("_dummy")
@@ -26,14 +27,23 @@ async function setupCollections(db) {
           },
         });
 
-      // Clean up dummy document
+      // Notifications index
+      await db.collection("notifications").doc("_dummy").set({
+        userId: "dummy",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Clean up dummy documents
       await db.collection("posts").doc("_dummy").delete();
+      await db.collection("notifications").doc("_dummy").delete();
     } catch (error) {
-      console.warn("Warning: Could not create dummy document:", error.message);
+      console.warn("Warning: Could not create dummy documents:", error.message);
     }
 
     // Log index creation instructions
-    console.log("\nImportant: You need to create the following indexes in Firebase Console:");
+    console.log(
+      "\nImportant: You need to create the following indexes in Firebase Console:"
+    );
     console.log("1. Collection: posts");
     console.log("   Fields:");
     console.log("   - userId (Ascending)");
@@ -43,9 +53,17 @@ async function setupCollections(db) {
     console.log("   Fields:");
     console.log("   - userId (Ascending)");
     console.log("   - platforms.[platform].status (Ascending)");
-    
+
+    console.log("\n3. Collection: notifications");
+    console.log("   Fields:");
+    console.log("   - userId (Ascending)");
+    console.log("   - createdAt (Descending)");
+    console.log("   - __name__ (Ascending)");
+
     console.log("\nFirebase Console URL:");
-    console.log("https://console.firebase.google.com/project/social-media-scheduler-9a3ad/firestore/indexes");
+    console.log(
+      "https://console.firebase.google.com/project/social-media-scheduler-9a3ad/firestore/indexes"
+    );
 
     console.log("\nCollections setup completed successfully.");
     return true;

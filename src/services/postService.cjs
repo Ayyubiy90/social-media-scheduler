@@ -1,14 +1,15 @@
-const db = require('../../firebaseConfig.cjs');
+const getDb = require("../../firebaseConfig.cjs");
 
 class PostService {
   static async createPost(userId, postData) {
     try {
-      const postRef = db.collection('posts').doc();
+      const db = await getDb;
+      const postRef = db.collection("posts").doc();
       await postRef.set({
         ...postData,
         userId,
         createdAt: new Date(),
-        status: 'draft'
+        status: "draft",
       });
       return { id: postRef.id, ...postData };
     } catch (error) {
@@ -18,12 +19,13 @@ class PostService {
 
   static async getPosts(userId, platform = null) {
     try {
-      let query = db.collection('posts').where('userId', '==', userId);
+      const db = await getDb;
+      let query = db.collection("posts").where("userId", "==", userId);
       if (platform) {
-        query = query.where(`platforms.${platform}`, '!=', null);
+        query = query.where(`platforms.${platform}`, "!=", null);
       }
       const snapshot = await query.get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
       throw new Error(`Failed to get posts: ${error.message}`);
     }
@@ -31,9 +33,10 @@ class PostService {
 
   static async getPostById(postId) {
     try {
-      const postDoc = await db.collection('posts').doc(postId).get();
+      const db = await getDb;
+      const postDoc = await db.collection("posts").doc(postId).get();
       if (!postDoc.exists) {
-        throw new Error('Post not found');
+        throw new Error("Post not found");
       }
       return { id: postDoc.id, ...postDoc.data() };
     } catch (error) {
@@ -43,7 +46,8 @@ class PostService {
 
   static async updatePost(postId, updateData) {
     try {
-      const postRef = db.collection('posts').doc(postId);
+      const db = await getDb;
+      const postRef = db.collection("posts").doc(postId);
       await postRef.update(updateData);
       const updated = await postRef.get();
       return { id: updated.id, ...updated.data() };
@@ -54,7 +58,8 @@ class PostService {
 
   static async deletePost(postId) {
     try {
-      await db.collection('posts').doc(postId).delete();
+      const db = await getDb;
+      await db.collection("posts").doc(postId).delete();
       return true;
     } catch (error) {
       throw new Error(`Failed to delete post: ${error.message}`);
@@ -63,11 +68,12 @@ class PostService {
 
   static async schedulePost(postId, scheduleData) {
     try {
+      const db = await getDb;
       const { scheduledFor, platforms } = scheduleData;
-      await db.collection('posts').doc(postId).update({
+      await db.collection("posts").doc(postId).update({
         scheduledFor,
         platforms,
-        status: 'scheduled'
+        status: "scheduled",
       });
       return { id: postId, scheduledFor, platforms };
     } catch (error) {
@@ -77,12 +83,13 @@ class PostService {
 
   static async publishPost(postId, platforms) {
     try {
-      await db.collection('posts').doc(postId).update({
+      const db = await getDb;
+      await db.collection("posts").doc(postId).update({
         platforms,
-        status: 'published',
-        publishedAt: new Date()
+        status: "published",
+        publishedAt: new Date(),
       });
-      return { id: postId, status: 'published', platforms };
+      return { id: postId, status: "published", platforms };
     } catch (error) {
       throw new Error(`Failed to publish post: ${error.message}`);
     }

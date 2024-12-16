@@ -54,49 +54,112 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Function to check if URL contains OAuth error
+  const checkForOAuthError = useCallback(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthError = urlParams.get("error");
+    if (oauthError) {
+      setError(decodeURIComponent(oauthError).replace(/_/g, " "));
+      // Remove error from URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, []);
+
   const refreshAccounts = useCallback(async () => {
-    if (!user?.uid) return;
     setLoading(true);
     try {
       const accounts = await socialMediaService.getConnectedAccounts();
       setConnectedAccounts(accounts);
       setError(null);
     } catch (err) {
-      setError(
+      // Don't show error for auth-related issues during Twitter flow
+      if (localStorage.getItem("twitterConnecting") === "true") {
+        return;
+      }
+      const errorMessage =
         err instanceof Error
           ? err.message
-          : "Failed to fetch connected accounts"
-      );
+          : "Failed to fetch connected accounts";
+      console.error("Error fetching connected accounts:", err);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [user?.uid]);
+  }, []);
 
+  // Handle OAuth callbacks and user changes
   useEffect(() => {
-    refreshAccounts();
-  }, [refreshAccounts]);
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasCallback = urlParams.has("oauth_token") || urlParams.has("code");
+    const wasConnectingTwitter =
+      localStorage.getItem("twitterConnecting") === "true";
+
+    if (hasCallback && wasConnectingTwitter) {
+      // This is a Twitter OAuth callback
+      localStorage.removeItem("twitterConnecting");
+      setTimeout(() => {
+        refreshAccounts();
+        // Clean up URL
+        window.history.replaceState({}, "", window.location.pathname);
+      }, 1000);
+    } else if (wasConnectingTwitter) {
+      // Twitter connection was attempted but failed
+      localStorage.removeItem("twitterConnecting");
+      setError("Twitter connection failed or was cancelled");
+      // Clean up URL
+      window.history.replaceState({}, "", window.location.pathname);
+    } else {
+      // Normal mount or user change
+      checkForOAuthError();
+      if (user?.uid) {
+        refreshAccounts();
+      }
+    }
+  }, [user?.uid, checkForOAuthError, refreshAccounts]);
 
   const connectAccount = async (platform: string) => {
+    setLoading(true);
+    setError(null);
     try {
+      // For Twitter, we don't need to check auth token as it uses OAuth
+      if (platform === "twitter") {
+        await socialMediaService.connectAccount(platform);
+        return;
+      }
+
+      // For other platforms, ensure user is authenticated
+      if (!user?.uid) {
+        throw new Error("You must be logged in to connect social accounts");
+      }
+
       await socialMediaService.connectAccount(platform);
       await refreshAccounts();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to connect account"
-      );
+      const errorMessage =
+        err instanceof Error ? err.message : `Failed to connect ${platform}`;
+      console.error(`Error connecting ${platform}:`, err);
+      setError(errorMessage);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
   const disconnectAccount = async (platform: string) => {
+    setLoading(true);
+    setError(null);
     try {
       await socialMediaService.disconnectAccount(platform);
       await refreshAccounts();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to disconnect account"
-      );
+      const errorMessage =
+        err instanceof Error ? err.message : `Failed to disconnect ${platform}`;
+      console.error(`Error disconnecting ${platform}:`, err);
+      setError(errorMessage);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -106,19 +169,20 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
     mediaUrls?: string[]
   ): Promise<PostResult> => {
     setLoading(true);
+    setError(null);
     try {
       const result = await socialMediaService.publishPost(
         platform,
         content,
         mediaUrls
       );
-      setError(null);
       return result;
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to publish post";
+      console.error("Error publishing post:", err);
       setError(errorMessage);
-      throw new Error(errorMessage);
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -129,48 +193,51 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
     content: string,
     mediaUrls?: string[]
   ) => {
+    setError(null);
     try {
       const result = await socialMediaService.validatePost(
         platform,
         content,
         mediaUrls
       );
-      setError(null);
       return result;
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to validate post";
+      console.error("Error validating post:", err);
       setError(errorMessage);
-      throw new Error(errorMessage);
+      throw err;
     }
   };
 
   const getPostPreview = async (platform: string, content: string) => {
+    setError(null);
     try {
       const preview = await socialMediaService.getPostPreview(
         platform,
         content
       );
-      setError(null);
       return preview;
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to get post preview";
+      console.error("Error getting post preview:", err);
       setError(errorMessage);
-      throw new Error(errorMessage);
+      throw err;
     }
   };
 
   const getPlatformLimits = async (platform: string) => {
+    setError(null);
     try {
       const limits = await socialMediaService.getPlatformLimits(platform);
-      setError(null);
       return limits;
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to get platform limits";
+      console.error("Error getting platform limits:", err);
       setError(errorMessage);
-      throw new Error(errorMessage);
+      throw err;
     }
   };
 

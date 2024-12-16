@@ -1,7 +1,7 @@
 {
   "indexes": [
     {
-      "collectionGroup": "posts",
+      "collectionGroup": "notifications",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -9,7 +9,11 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "metadata.publishedAt",
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
           "order": "ASCENDING"
         }
       ]

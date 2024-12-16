@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useSocialMedia } from "../contexts/SocialMediaContext";
 import {
   Facebook,
@@ -7,6 +7,8 @@ import {
   Instagram,
   Link2,
   Unlink,
+  AlertCircle,
+  X,
 } from "lucide-react";
 
 const PLATFORMS = [
@@ -46,34 +48,63 @@ export const SocialMediaConnector: React.FC = () => {
     connectAccount,
     disconnectAccount,
     loading,
-    error,
+    error: contextError,
   } = useSocialMedia();
+
+  const [error, setError] = useState<string | null>(contextError);
+  const [connectingPlatform, setConnectingPlatform] = useState<string | null>(
+    null
+  );
 
   const handleConnect = async (platform: string) => {
     try {
+      setError(null);
+      setConnectingPlatform(platform);
       await connectAccount(platform);
+      setConnectingPlatform(null);
     } catch (err) {
       console.error(`Failed to connect ${platform}:`, err);
+      setError(
+        err instanceof Error ? err.message : `Failed to connect ${platform}`
+      );
+      setConnectingPlatform(null);
     }
   };
 
   const handleDisconnect = async (platform: string) => {
     try {
+      setError(null);
+      setConnectingPlatform(platform);
       await disconnectAccount(platform);
+      setConnectingPlatform(null);
     } catch (err) {
       console.error(`Failed to disconnect ${platform}:`, err);
+      setError(
+        err instanceof Error ? err.message : `Failed to disconnect ${platform}`
+      );
+      setConnectingPlatform(null);
     }
   };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-        Connected Accounts
-      </h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          Connected Accounts
+        </h2>
+        {error && (
+          <button
+            onClick={() => setError(null)}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/50 border border-red-400 text-red-700 dark:text-red-200 px-4 py-3 rounded relative">
-          {error}
+        <div className="bg-red-50 dark:bg-red-900/50 border border-red-400 text-red-700 dark:text-red-200 px-4 py-3 rounded relative flex items-start">
+          <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+          <div className="flex-grow">{error}</div>
         </div>
       )}
 
@@ -86,6 +117,7 @@ export const SocialMediaConnector: React.FC = () => {
           const account = connectedAccounts.find(
             (acc) => acc.platform === platform.id
           );
+          const isLoading = loading && connectingPlatform === platform.id;
 
           return (
             <div
@@ -112,7 +144,7 @@ export const SocialMediaConnector: React.FC = () => {
                       ? handleDisconnect(platform.id)
                       : handleConnect(platform.id)
                   }
-                  disabled={loading}
+                  disabled={isLoading}
                   className={`
                     inline-flex items-center px-4 py-2 border-2 rounded-md text-sm font-medium shadow-sm
                     transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
@@ -133,7 +165,29 @@ export const SocialMediaConnector: React.FC = () => {
                       ? { backgroundColor: platform.color }
                       : undefined
                   }>
-                  {isConnected ? (
+                  {isLoading ? (
+                    <div className="flex items-center">
+                      <svg
+                        className="animate-spin h-4 w-4 mr-1.5"
+                        viewBox="0 0 24 24">
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          fill="none"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      {isConnected ? "Disconnecting..." : "Connecting..."}
+                    </div>
+                  ) : isConnected ? (
                     <>
                       <Unlink className="w-4 h-4 mr-1.5" />
                       Disconnect

@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from "../config/axios";
 import type {
   EngagementMetrics,
   PlatformStats,
@@ -14,57 +14,58 @@ export const analyticsService = {
     startDate: string,
     endDate: string
   ): Promise<EngagementMetrics[]> {
-    const response = await axios.get<EngagementMetrics[]>(
-      `${API_URL}/analytics/engagement?startDate=${startDate}&endDate=${endDate}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
+    const response = await axiosInstance.get<EngagementMetrics[]>(
+      `${API_URL}/analytics/engagement?startDate=${startDate}&endDate=${endDate}`
     );
     return response.data;
   },
 
   // Get platform-specific statistics
   async getPlatformStats(): Promise<PlatformStats[]> {
-    const response = await axios.get<PlatformStats[]>(
-      `${API_URL}/analytics/platforms`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
+    // Get stats for all supported platforms
+    const platforms = ["facebook", "twitter", "linkedin", "instagram"];
+    const stats = await Promise.all(
+      platforms.map(async (platform) => {
+        try {
+          const response = await axiosInstance.get<PlatformStats>(
+            `${API_URL}/analytics/platforms/${platform}`
+          );
+          return response.data;
+        } catch (error) {
+          console.error(`Error fetching stats for ${platform}:`, error);
+          // Return default stats matching PlatformStats interface
+          return {
+            platform,
+            followers: 0,
+            engagement: 0,
+            posts: 0,
+            averageLikes: 0,
+            averageComments: 0,
+            averageShares: 0,
+          };
+        }
+      })
     );
-    return response.data;
+    return stats;
   },
 
   // Get analytics for specific posts
   async getPostAnalytics(postIds: string[]): Promise<PostAnalytics[]> {
-    const response = await axios.post<PostAnalytics[]>(
+    const response = await axiosInstance.post<PostAnalytics[]>(
       `${API_URL}/analytics/posts`,
-      { postIds },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
+      { postIds }
     );
     return response.data.map((post) => ({
       ...post,
-      metrics: post.metrics as { [platform: string]: PostMetrics }, // Ensure PostMetrics is used
+      metrics: post.metrics as { [platform: string]: PostMetrics },
     }));
   },
 
   // Get real-time metrics for active posts
   async getRealTimeMetrics(postIds: string[]): Promise<PostAnalytics[]> {
-    const response = await axios.post<PostAnalytics[]>(
+    const response = await axiosInstance.post<PostAnalytics[]>(
       `${API_URL}/analytics/realtime`,
-      { postIds },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
+      { postIds }
     );
     return response.data;
   },
@@ -74,13 +75,9 @@ export const analyticsService = {
     platform: string,
     timeframe: "week" | "month" | "year"
   ): Promise<{ day: string; hour: number; value: number }[]> {
-    const response = await axios.get<
+    const response = await axiosInstance.get<
       { day: string; hour: number; value: number }[]
-    >(`${API_URL}/analytics/heatmap/${platform}?timeframe=${timeframe}`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+    >(`${API_URL}/analytics/heatmap/${platform}?timeframe=${timeframe}`);
     return response.data;
   },
 
@@ -89,15 +86,10 @@ export const analyticsService = {
     startDate: string,
     endDate: string
   ): Promise<{ platform: string; metrics: EngagementMetrics }[]> {
-    const response = await axios.get<
+    const response = await axiosInstance.get<
       { platform: string; metrics: EngagementMetrics }[]
     >(
-      `${API_URL}/analytics/comparison?startDate=${startDate}&endDate=${endDate}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
+      `${API_URL}/analytics/comparison?startDate=${startDate}&endDate=${endDate}`
     );
     return response.data;
   },
@@ -108,12 +100,9 @@ export const analyticsService = {
     endDate: string,
     format: "csv" | "json"
   ): Promise<Blob> {
-    const response = await axios.get<Blob>(
+    const response = await axiosInstance.get<Blob>(
       `${API_URL}/analytics/export?startDate=${startDate}&endDate=${endDate}&format=${format}`,
       {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
         responseType: "blob",
       }
     );
