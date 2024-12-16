@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth, setPersistence, browserSessionPersistence } from "@firebase/auth";
+import { getAuth, browserLocalPersistence, setPersistence } from "@firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,17 +17,29 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firestore
 const db = getFirestore(app);
 
-// Initialize Firebase Authentication with session persistence
+// Initialize Firebase Authentication with local persistence
 const auth = getAuth(app);
 
-// Set persistence
-setPersistence(auth, browserSessionPersistence)
+// Set persistence to local to prevent token expiration issues
+setPersistence(auth, browserLocalPersistence)
   .then(() => {
-    console.log('Firebase Auth persistence set to session');
+    console.log('Firebase Auth persistence set to local');
   })
   .catch((error) => {
     console.error('Error setting auth persistence:', error);
   });
+
+// Listen for auth state changes
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    // Get fresh token when auth state changes
+    user.getIdToken(true).then((token) => {
+      localStorage.setItem("token", token);
+    });
+  } else {
+    localStorage.removeItem("token");
+  }
+});
 
 // Export initialized instances
 export { app as default, db, auth };

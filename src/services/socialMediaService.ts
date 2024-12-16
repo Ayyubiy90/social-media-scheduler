@@ -1,4 +1,5 @@
 import axiosInstance from "../config/axios";
+import { getAuth } from "firebase/auth";
 
 export interface SocialMediaAccount {
   platform: "facebook" | "twitter" | "linkedin" | "instagram";
@@ -39,23 +40,53 @@ interface ApiError {
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+const getAuthHeaders = async () => {
+  try {
+    // Try to get current Firebase user
+    const auth = getAuth();
+    const user = auth.currentUser;
+    
+    if (user) {
+      // Get fresh token
+      const token = await user.getIdToken(true);
+      localStorage.setItem("token", token);
+      return {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      };
+    }
+    
+    // If no user, try to get token from localStorage
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("Authentication token not found");
+    }
+    
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+  } catch (error) {
+    console.error("Error getting auth headers:", error);
+    throw new Error("Failed to get authentication token");
+  }
+};
+
 export const socialMediaService = {
   // Get connected accounts
   async getConnectedAccounts(): Promise<SocialMediaAccount[]> {
     try {
+      const headers = await getAuthHeaders();
       const response = await axiosInstance.get<SocialMediaAccount[]>(
-        `${API_URL}/social/connected-accounts`
+        `${API_URL}/social/connected-accounts`,
+        headers
       );
       return response.data;
     } catch (error) {
       console.error("Error getting connected accounts:", error);
-      // Return a default structure with all platforms disconnected
-      return [
-        { platform: "twitter", connected: false },
-        { platform: "facebook", connected: false },
-        { platform: "linkedin", connected: false },
-        { platform: "instagram", connected: false },
-      ];
+      throw error;
     }
   },
 
@@ -66,17 +97,18 @@ export const socialMediaService = {
       if (platform === "twitter") {
         const currentUrl = window.location.href;
         localStorage.setItem("returnUrl", currentUrl);
-        // Add state parameter to track the connection attempt
         localStorage.setItem("twitterConnecting", "true");
-        // Use fetch directly to avoid axios interceptors
-        window.location.href = `${API_URL}/social/twitter/connect`;
+        
+        // Get fresh token before redirect
+        const headers = await getAuthHeaders();
+        const token = headers.headers.Authorization.split(" ")[1];
+        
+        // Store token for OAuth flow
+        localStorage.setItem("token", token);
+        
+        // Redirect to Twitter connect endpoint with token in query
+        window.location.href = `${API_URL}/social/twitter/connect?token=${token}`;
         return;
-      }
-
-      // For other platforms, ensure user is authenticated
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("You must be logged in to connect social accounts");
       }
 
       // For other platforms, use popup
@@ -154,12 +186,11 @@ export const socialMediaService = {
   // Disconnect account
   async disconnectAccount(platform: string): Promise<void> {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("You must be logged in to disconnect social accounts");
-      }
-
-      await axiosInstance.delete(`${API_URL}/social/${platform}/disconnect`);
+      const headers = await getAuthHeaders();
+      await axiosInstance.delete(
+        `${API_URL}/social/${platform}/disconnect`,
+        headers
+      );
     } catch (error) {
       console.error(`Error disconnecting from ${platform}:`, error);
       throw error;
@@ -173,17 +204,14 @@ export const socialMediaService = {
     mediaUrls?: string[]
   ): Promise<PostResult> {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("You must be logged in to publish posts");
-      }
-
+      const headers = await getAuthHeaders();
       const response = await axiosInstance.post<PostResult>(
         `${API_URL}/social/${platform}/publish`,
         {
           content,
           mediaUrls,
-        }
+        },
+        headers
       );
       return response.data;
     } catch (error) {
@@ -198,14 +226,11 @@ export const socialMediaService = {
   // Get platform-specific post preview
   async getPostPreview(platform: string, content: string): Promise<string> {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("You must be logged in to preview posts");
-      }
-
+      const headers = await getAuthHeaders();
       const response = await axiosInstance.post<PostPreview>(
         `${API_URL}/social/${platform}/preview`,
-        { content }
+        { content },
+        headers
       );
       return response.data.preview;
     } catch (error) {
@@ -221,17 +246,14 @@ export const socialMediaService = {
     mediaUrls?: string[]
   ): Promise<PostValidation> {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("You must be logged in to validate posts");
-      }
-
+      const headers = await getAuthHeaders();
       const response = await axiosInstance.post<PostValidation>(
         `${API_URL}/social/${platform}/validate`,
         {
           content,
           mediaUrls,
-        }
+        },
+        headers
       );
       return response.data;
     } catch (error) {
@@ -243,13 +265,10 @@ export const socialMediaService = {
   // Get platform posting limits and guidelines
   async getPlatformLimits(platform: string): Promise<PlatformLimits> {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("You must be logged in to get platform limits");
-      }
-
+      const headers = await getAuthHeaders();
       const response = await axiosInstance.get<PlatformLimits>(
-        `${API_URL}/social/${platform}/limits`
+        `${API_URL}/social/${platform}/limits`,
+        headers
       );
       return response.data;
     } catch (error) {

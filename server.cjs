@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const admin = require("firebase-admin");
 const session = require("express-session");
+const cookieParser = require("cookie-parser");
 const passport = require("passport");
 require("./src/middleware/oauthMiddleware.cjs");
 const { verifyToken, verifySession } = require("./src/middleware/authMiddleware.cjs");
@@ -26,19 +27,24 @@ console.log("Environment check - OAuth credentials exist:", {
   }
 });
 
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    origin: CLIENT_URL,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
-    exposedHeaders: ["set-cookie"],
+    exposedHeaders: ["Set-Cookie"],
   })
 );
 
 // Enable pre-flight requests for all routes
 app.options("*", cors());
+
+// Cookie parser middleware
+app.use(cookieParser(process.env.SESSION_SECRET));
 
 // Body parser middleware
 app.use(express.json());
@@ -48,41 +54,48 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "default-secret-key",
-    resave: true,
-    saveUninitialized: true,
-    store: new session.MemoryStore(), // Use memory store for development
+    resave: false,
+    saveUninitialized: false,
+    store: new session.MemoryStore(),
+    proxy: true, // Required for secure cookies behind a proxy
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.COOKIE_SECURE === "true",
       httpOnly: true,
-      domain: process.env.COOKIE_DOMAIN || "localhost",
+      sameSite: "lax",
       maxAge: parseInt(process.env.COOKIE_MAX_AGE) || 24 * 60 * 60 * 1000,
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax"
+      path: "/",
+      domain: process.env.COOKIE_DOMAIN || undefined
     },
-    name: 'social-scheduler.sid',
-    rolling: true
+    name: 'social-scheduler.sid'
   })
 );
 
-// Debug middleware for session
+// Debug middleware for session and auth
 app.use((req, res, next) => {
-  console.log('Session Debug:', {
-    sessionId: req.sessionID,
-    hasSession: !!req.session,
-    userId: req.session?.userId,
-    isAuthenticated: req.isAuthenticated?.(),
-    user: req.user
-  });
-  next();
-});
+  // Get token from Authorization header
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ') 
+    ? authHeader.split('Bearer ')[1] 
+    : null;
 
-// Debug middleware for session
-app.use((req, res, next) => {
-  console.log('Session Debug:', {
+  console.log('Request Debug:', {
+    url: req.url,
     sessionId: req.sessionID,
     hasSession: !!req.session,
     userId: req.session?.userId,
     isAuthenticated: req.isAuthenticated?.(),
-    user: req.user
+    hasAuthHeader: !!authHeader,
+    hasToken: !!token,
+    path: req.path,
+    method: req.method,
+    cookies: req.cookies,
+    signedCookies: req.signedCookies,
+    headers: {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      cookie: req.headers.cookie,
+      authorization: req.headers.authorization
+    }
   });
   next();
 });
@@ -97,11 +110,16 @@ const notificationRoutes = require("./notificationRoutes.cjs");
 const socialRoutes = require("./socialRoutes.cjs");
 const analyticsRoutes = require("./analyticsRoutes.cjs");
 
-// Mount routes - MUST be after passport initialization
+// Mount routes
 app.use("/auth", authRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/analytics", analyticsRoutes);
 app.use("/social", socialRoutes);
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
 
 // Initialize Firebase and start server
 const initializeApp = async () => {
@@ -278,6 +296,7 @@ const initializeApp = async () => {
     // Start the server
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);
+      console.log(`Client URL: ${CLIENT_URL}`);
       console.log(`OAuth callback URLs should be configured as:`);
       console.log(`Twitter: http://localhost:${port}/social/twitter/callback`);
     });

@@ -41,7 +41,21 @@ if (process.env.TWITTER_API_KEY && process.env.TWITTER_API_SECRET) {
           // Get the current user's ID from the session
           const userId = req.session?.userId;
           if (!userId) {
-            return done(new Error('User must be logged in to connect Twitter'), null);
+            // Try to get user ID from the Authorization header
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+              const idToken = authHeader.split('Bearer ')[1];
+              try {
+                const decodedToken = await admin.auth().verifyIdToken(idToken);
+                req.session.userId = decodedToken.uid;
+                console.log("Retrieved user ID from token:", decodedToken.uid);
+              } catch (error) {
+                console.error("Error verifying ID token:", error);
+                return done(new Error('User must be logged in to connect Twitter'), null);
+              }
+            } else {
+              return done(new Error('User must be logged in to connect Twitter'), null);
+            }
           }
 
           // Return the Twitter profile with tokens

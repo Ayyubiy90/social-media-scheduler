@@ -7,6 +7,7 @@ import React, {
   ReactNode,
 } from "react";
 import { useUser } from "./UserContext";
+import { getAuth } from "firebase/auth";
 import {
   socialMediaService,
   SocialMediaAccount,
@@ -54,9 +55,28 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Function to get fresh token
+  const getFreshToken = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const token = await currentUser.getIdToken(true);
+        localStorage.setItem("token", token);
+        return token;
+      } catch (error) {
+        console.error("Error getting fresh token:", error);
+        throw error;
+      }
+    }
+    throw new Error("No user logged in");
+  };
+
   const refreshAccounts = useCallback(async () => {
     setLoading(true);
     try {
+      // Get fresh token before fetching accounts
+      await getFreshToken();
       const accounts = await socialMediaService.getConnectedAccounts();
       setConnectedAccounts(accounts);
       setError(null);
@@ -117,19 +137,19 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      // For Twitter, we don't need to check auth token as it uses OAuth
-      if (platform === "twitter") {
-        await socialMediaService.connectAccount(platform);
-        return;
-      }
-
-      // For other platforms, ensure user is authenticated
+      // Ensure user is authenticated for all platforms
       if (!user?.uid) {
         throw new Error("You must be logged in to connect social accounts");
       }
 
+      // Get fresh token before connecting
+      await getFreshToken();
       await socialMediaService.connectAccount(platform);
-      await refreshAccounts();
+      
+      // Don't refresh accounts for Twitter as it will be handled by the callback
+      if (platform !== "twitter") {
+        await refreshAccounts();
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : `Failed to connect ${platform}`;
@@ -145,6 +165,7 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
+      await getFreshToken();
       await socialMediaService.disconnectAccount(platform);
       await refreshAccounts();
     } catch (err) {
@@ -166,6 +187,7 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
+      await getFreshToken();
       const result = await socialMediaService.publishPost(
         platform,
         content,
@@ -190,6 +212,7 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
   ) => {
     setError(null);
     try {
+      await getFreshToken();
       const result = await socialMediaService.validatePost(
         platform,
         content,
@@ -208,6 +231,7 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
   const getPostPreview = async (platform: string, content: string) => {
     setError(null);
     try {
+      await getFreshToken();
       const preview = await socialMediaService.getPostPreview(
         platform,
         content
@@ -225,6 +249,7 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
   const getPlatformLimits = async (platform: string) => {
     setError(null);
     try {
+      await getFreshToken();
       const limits = await socialMediaService.getPlatformLimits(platform);
       return limits;
     } catch (err) {

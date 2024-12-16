@@ -36,7 +36,7 @@ const Login = () => {
         "/dashboard";
       navigate(from, { replace: true });
     } catch (error) {
-      // Error is handled by UserContext and shown in dialog
+      // Log the error to the console for debugging
       console.error("Login error:", error);
     }
   };

@@ -6,31 +6,34 @@ const {
   verifySession,
 } = require("./src/middleware/authMiddleware.cjs");
 
+// Import required modules
+const admin = require("firebase-admin");
+const { Request } = require("express");
+
+// Debug logging function
+const debugLog = (message, data) => {
+  console.log(`[Social Routes Debug] ${message}:`, data);
+};
+
 // OAuth routes for each platform
-router.get("/twitter/connect", (req, res, next) => {
+router.get("/twitter/connect", verifyToken, verifySession, (req, res, next) => {
   // Store return URL and user ID in session
   req.session.returnTo = `${
     process.env.CLIENT_URL || "http://localhost:5173"
   }/settings`;
 
-  console.log("Twitter Connect Debug:", {
+  debugLog("Twitter Connect Debug", {
     sessionId: req.sessionID,
     hasSession: !!req.session,
     user: req.user,
     uid: req.user?.uid,
+    token: req.headers.authorization,
   });
 
   // Store user ID in session before Twitter auth
   if (req.user?.uid) {
     req.session.userId = req.user.uid;
-    console.log("Stored user ID in session:", req.user.uid);
-  } else {
-    console.error("No user ID available to store in session");
-    return res.redirect(
-      `${
-        process.env.CLIENT_URL || "http://localhost:5173"
-      }/settings?error=Please log in before connecting Twitter`
-    );
+    debugLog("Stored user ID in session", req.user.uid);
   }
 
   // Save session before redirecting to Twitter
@@ -43,7 +46,7 @@ router.get("/twitter/connect", (req, res, next) => {
         }/settings?error=Failed to save session`
       );
     }
-    console.log("Session saved successfully, proceeding with Twitter auth");
+    debugLog("Session saved successfully", "proceeding with Twitter auth");
     passport.authenticate("twitter")(req, res, next);
   });
 });
@@ -59,7 +62,7 @@ router.get("/twitter/callback", (req, res, next) => {
     return res.redirect(url.toString());
   };
 
-  console.log("Twitter Callback Debug:", {
+  debugLog("Twitter Callback Debug", {
     sessionId: req.sessionID,
     hasSession: !!req.session,
     userId: req.session?.userId,
@@ -68,6 +71,7 @@ router.get("/twitter/callback", (req, res, next) => {
     query: req.query,
     oauthToken: req.query.oauth_token,
     oauthVerifier: req.query.oauth_verifier,
+    headers: req.headers,
   });
 
   // Check if we have OAuth parameters
@@ -90,138 +94,149 @@ router.get("/twitter/callback", (req, res, next) => {
         return redirectToSettings("Failed to connect Twitter account");
       }
 
-      // Check if we have the original user ID in session
+      debugLog("Twitter User Data", {
+        id: twitterUser.id,
+        username: twitterUser.username,
+        displayName: twitterUser.displayName,
+        photos: twitterUser.photos,
+        hasToken: !!twitterUser.token,
+        hasTokenSecret: !!twitterUser.tokenSecret,
+      });
+
+      // Get the original user ID from session
       const userId = req.session?.userId;
       if (!userId) {
         console.error("Twitter auth failed: No user ID in session");
         return redirectToSettings("Please log in before connecting Twitter");
       }
 
-      // Restore the user ID from session
-      req.user = { uid: userId };
-
-      // Update the user's Twitter profile in Firestore
-      const admin = require("firebase-admin");
-      const db = admin.firestore();
-
       try {
-        console.log("Updating Firestore with Twitter profile:", {
-          userId: req.user.uid,
+        debugLog("Updating Firestore with Twitter profile", {
+          userId: userId,
           twitterUsername: twitterUser.username,
           twitterId: twitterUser.id,
         });
 
         // Get user document reference
-        const userRef = db.collection("users").doc(req.user.uid);
-        const userDoc = await userRef.get();
+        const userRef = admin.firestore().collection("users").doc(userId);
 
-        if (!userDoc.exists) {
-          throw new Error("User document not found");
-        }
+        // Create or update user document
+        await admin.firestore().runTransaction(async (transaction) => {
+          const userDoc = await transaction.get(userRef);
 
-        // Update user document with Twitter profile
-        await userRef.update({
-          twitterProfile: {
-            id: twitterUser.id,
-            username: twitterUser.username,
-            name: twitterUser.displayName,
-            profile_image_url: twitterUser.photos?.[0]?.value,
-          },
-          twitterConnected: true,
-          twitterConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
-          twitterToken: twitterUser.token,
-          twitterTokenSecret: twitterUser.tokenSecret,
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        });
+          if (!userDoc.exists) {
+            debugLog("Creating new user document", userId);
+            transaction.set(userRef, {
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
 
-        console.log("Firestore update successful");
-
-        // Save session changes
-        await new Promise((resolve, reject) => {
-          req.session.save((err) => {
-            if (err) {
-              console.error("Session save error:", err);
-              reject(err);
-            } else {
-              console.log("Session saved successfully");
-              resolve();
-            }
+          debugLog("Updating user document with Twitter profile", userId);
+          transaction.update(userRef, {
+            twitterProfile: {
+              id: twitterUser.id,
+              username: twitterUser.username,
+              name: twitterUser.displayName,
+              profile_image_url: twitterUser.photos?.[0]?.value,
+            },
+            twitterConnected: true,
+            twitterConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
+            twitterToken: twitterUser.token,
+            twitterTokenSecret: twitterUser.tokenSecret,
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
           });
         });
 
-        // Clear Twitter connection state
-        delete req.session.userId;
-
-        console.log("Twitter connection successful");
+        debugLog("Firestore update successful", userId);
         return redirectToSettings(null);
       } catch (error) {
         console.error("Error in Twitter callback:", error);
-        const errorMessage =
-          error.message === "User document not found"
-            ? "User not found. Please try logging in again."
-            : "Failed to connect Twitter account. Please try again.";
-        return redirectToSettings(errorMessage);
+        return redirectToSettings(
+          "Failed to connect Twitter account. Please try again."
+        );
       }
     }
   )(req, res, next);
 });
 
 // Get connected accounts
-router.get("/connected-accounts", async (req, res) => {
-  try {
-    // If no user is authenticated, return default accounts
-    if (!req.user?.uid) {
-      return res.json([
-        { platform: "twitter", connected: false },
-        { platform: "facebook", connected: false },
-        { platform: "linkedin", connected: false },
-        { platform: "instagram", connected: false },
-      ]);
+router.get(
+  "/connected-accounts",
+  verifyToken,
+  verifySession,
+  async (req, res) => {
+    try {
+      debugLog("Getting connected accounts for user", req.user?.uid);
+
+      const { uid } = req.user;
+      const userRef = admin.firestore().collection("users").doc(uid);
+
+      try {
+        const userDoc = await userRef.get();
+        debugLog("User document exists", userDoc.exists);
+
+        if (!userDoc.exists) {
+          debugLog("Creating new user document", uid);
+          await userRef.set({
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // Return default accounts since we just created the document
+          return res.json([
+            { platform: "twitter", connected: false },
+            { platform: "facebook", connected: false },
+            { platform: "linkedin", connected: false },
+            { platform: "instagram", connected: false },
+          ]);
+        }
+
+        const userData = userDoc.data();
+        debugLog("User data", {
+          hasTwitterProfile: !!userData.twitterProfile,
+          twitterConnected: userData.twitterConnected,
+          twitterUsername: userData.twitterProfile?.username,
+        });
+
+        // Check for Twitter-specific data first
+        const twitterProfile = userData.twitterProfile || null;
+        const twitterConnected = !!twitterProfile;
+
+        // Initialize response array with Twitter data
+        const accounts = [
+          {
+            platform: "twitter",
+            connected: twitterConnected,
+            accountName: twitterProfile?.username || null,
+            profileUrl: twitterProfile
+              ? `https://twitter.com/${twitterProfile.username}`
+              : null,
+          },
+        ];
+
+        // Add other platforms with default values
+        ["facebook", "linkedin", "instagram"].forEach((platform) => {
+          accounts.push({
+            platform,
+            connected: false,
+            accountName: null,
+            profileUrl: null,
+          });
+        });
+
+        debugLog("Returning accounts", accounts);
+        res.json(accounts);
+      } catch (error) {
+        console.error("Error accessing Firestore:", error);
+        throw error;
+      }
+    } catch (error) {
+      console.error("Error getting connected accounts:", error);
+      res.status(500).json({ error: "Failed to get connected accounts" });
     }
-
-    const { uid } = req.user;
-    const admin = require("firebase-admin");
-    const db = admin.firestore();
-    const userDoc = await db.collection("users").doc(uid).get();
-
-    if (!userDoc.exists) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const userData = userDoc.data();
-
-    // Check for Twitter-specific data first
-    const twitterProfile = userData.twitterProfile || null;
-    const twitterConnected = !!twitterProfile;
-
-    // Initialize response array with Twitter data
-    const accounts = [
-      {
-        platform: "twitter",
-        connected: twitterConnected,
-        accountName: twitterProfile?.username || null,
-        profileUrl: twitterProfile
-          ? `https://twitter.com/${twitterProfile.username}`
-          : null,
-      },
-    ];
-
-    // Add other platforms with default values
-    ["facebook", "linkedin", "instagram"].forEach((platform) => {
-      accounts.push({
-        platform,
-        connected: false,
-        accountName: null,
-        profileUrl: null,
-      });
-    });
-
-    res.json(accounts);
-  } catch (error) {
-    console.error("Error getting connected accounts:", error);
-    res.status(500).json({ error: "Failed to get connected accounts" });
   }
-});
+);
 
 // Disconnect platform account
 router.delete(
@@ -239,11 +254,8 @@ router.delete(
         return res.status(400).json({ error: "Invalid platform" });
       }
 
-      const admin = require("firebase-admin");
-      const db = admin.firestore();
-
       if (platform === "twitter") {
-        await db.collection("users").doc(uid).update({
+        await admin.firestore().collection("users").doc(uid).update({
           twitterProfile: null,
           twitterConnected: false,
           twitterDisconnectedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -252,7 +264,8 @@ router.delete(
           lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
         });
       } else {
-        await db
+        await admin
+          .firestore()
           .collection("users")
           .doc(uid)
           .update({

@@ -9,14 +9,13 @@ const axiosInstance = axios.create({
 
 // Add request interceptor to add auth token
 axiosInstance.interceptors.request.use((config) => {
-  // Try to get token from localStorage first
+  // Get token from localStorage
   const token = localStorage.getItem("token");
-  if (token) {
-    if (!config.headers) {
-      config.headers = {};
-    }
+  
+  if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
   return config;
 });
 
@@ -24,52 +23,62 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      const auth = getAuth();
-      if (auth.currentUser) {
-        try {
-          // Try to refresh token
-          const token = await auth.currentUser.getIdToken(true);
-          if (error.config) {
-            if (!error.config.headers) {
-              error.config.headers = {};
-            }
-            error.config.headers.Authorization = `Bearer ${token}`;
-            // Store new token
-            localStorage.setItem("token", token);
-            // Retry the request with new token
-            return axios(error.config);
+    const originalRequest = error.config;
+
+    // If error is 401 and we haven't retried yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // Get fresh token
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
+        
+        if (currentUser) {
+          const token = await currentUser.getIdToken(true); // Force refresh
+          localStorage.setItem("token", token);
+          
+          // Update request header
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
           }
-        } catch {
-          // If refresh fails, sign out
-          await auth.signOut();
-          localStorage.removeItem("token");
-          window.location.href = "/login";
+          
+          // Retry request
+          return axios(originalRequest);
         }
-      } else {
+      } catch (refreshError) {
+        console.error("Token refresh failed:", refreshError);
+        
         // Clear token and redirect to login
         localStorage.removeItem("token");
         window.location.href = "/login";
+        return Promise.reject(refreshError);
       }
     }
+
     return Promise.reject(error);
   }
 );
 
 // Function to update token
-export const updateToken = async () => {
-  const auth = getAuth();
-  if (auth.currentUser) {
-    try {
-      const token = await auth.currentUser.getIdToken(true);
+const updateToken = async (): Promise<void> => {
+  try {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const token = await currentUser.getIdToken(true);
       localStorage.setItem("token", token);
-    } catch (error) {
-      console.error("Error refreshing token:", error);
     }
+  } catch (error) {
+    console.error("Error refreshing token:", error);
   }
 };
 
-// Refresh token periodically (every 30 minutes)
-setInterval(updateToken, 30 * 60 * 1000);
+// Initialize token update interval
+const TOKEN_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
+setInterval(updateToken, TOKEN_REFRESH_INTERVAL);
+
+// Initial token update
+updateToken().catch(console.error);
 
 export default axiosInstance;
