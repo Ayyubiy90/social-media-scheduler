@@ -76,6 +76,11 @@ const verifyToken = async (req, res, next) => {
 
 const verifySession = async (req, res, next) => {
   try {
+    // For OAuth callbacks, skip verification
+    if (req.path.includes('/callback')) {
+      return next();
+    }
+
     // If we have a user from token verification, proceed
     if (req.user) {
       const userRecord = await admin.auth().getUser(req.user.uid);
@@ -85,7 +90,36 @@ const verifySession = async (req, res, next) => {
       return next();
     }
 
-    // No user found
+    // Check for Firebase token in session (for OAuth flows)
+    if (req.session?.firebaseToken) {
+      try {
+        const decodedToken = await admin.auth().verifyIdToken(req.session.firebaseToken);
+        req.user = {
+          uid: decodedToken.uid,
+          email: decodedToken.email,
+          token: req.session.firebaseToken
+        };
+        return next();
+      } catch (error) {
+        console.error("Session token verification error:", error);
+      }
+    }
+
+    // Check for userId in session
+    if (req.session?.userId) {
+      try {
+        const userRecord = await admin.auth().getUser(req.session.userId);
+        req.user = {
+          uid: userRecord.uid,
+          email: userRecord.email
+        };
+        return next();
+      } catch (error) {
+        console.error("Session user verification error:", error);
+      }
+    }
+
+    // No valid session found
     return res.status(401).json({ error: "Invalid session" });
   } catch (error) {
     console.error("Session verification error:", error);

@@ -30,18 +30,16 @@ console.log("Environment check - OAuth credentials exist:", {
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
 // CORS configuration
-app.use(
-  cors({
-    origin: CLIENT_URL,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
-    exposedHeaders: ["Set-Cookie"],
-  })
-);
+const corsOptions = {
+  origin: CLIENT_URL,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  exposedHeaders: ["Set-Cookie"],
+};
 
-// Enable pre-flight requests for all routes
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 // Cookie parser middleware
 app.use(cookieParser(process.env.SESSION_SECRET));
@@ -54,19 +52,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "default-secret-key",
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     store: new session.MemoryStore(),
-    proxy: true, // Required for secure cookies behind a proxy
     cookie: {
-      secure: process.env.COOKIE_SECURE === "true",
+      secure: false, // Set to false for development
       httpOnly: true,
       sameSite: "lax",
-      maxAge: parseInt(process.env.COOKIE_MAX_AGE) || 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
       path: "/",
-      domain: process.env.COOKIE_DOMAIN || undefined
     },
-    name: 'social-scheduler.sid'
+    name: "social-scheduler.sid",
   })
 );
 

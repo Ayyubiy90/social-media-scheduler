@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
-const { verifyToken, verifySession } = require("./src/middleware/authMiddleware.cjs");
+const {
+  verifyToken,
+  verifySession,
+} = require("./src/middleware/authMiddleware.cjs");
 const admin = require("firebase-admin");
 
 // Debug logging function
@@ -10,26 +13,79 @@ const debugLog = (message, data) => {
 };
 
 // OAuth routes for Twitter
-router.get("/twitter/connect", verifyToken, verifySession, (req, res, next) => {
-  req.session.returnTo = `${process.env.CLIENT_URL || "http://localhost:5173"}/settings`;
-  debugLog("Twitter Connect Debug", {
+const initOAuthConnect = (platform) => async (req, res, next) => {
+  const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+  req.session.returnTo = `${CLIENT_URL}/settings`;
+
+  debugLog(`${platform} Connect Debug`, {
     sessionId: req.sessionID,
     hasSession: !!req.session,
     user: req.user,
     uid: req.user?.uid,
   });
 
+  // Store the Firebase token in session for the callback
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split("Bearer ")[1];
+    req.session.firebaseToken = token;
+  }
+
+  // Store user ID in session if available
+  if (req.user?.uid) {
+    req.session.userId = req.user.uid;
+  }
+
+  // Store platform in session for callback
+  req.session.platform = platform.toLowerCase();
+
   req.session.save((err) => {
     if (err) {
       console.error("Session save error:", err);
-      return res.redirect(`${process.env.CLIENT_URL || "http://localhost:5173"}/settings?error=Failed to save session`);
+      return res.redirect(
+        `${CLIENT_URL}/settings?error=Failed to save session`
+      );
     }
-    debugLog("Session saved successfully", "proceeding with Twitter auth");
-    passport.authenticate("twitter")(req, res, next);
+    debugLog("Session saved successfully", `proceeding with ${platform} auth`);
+    passport.authenticate(platform.toLowerCase(), {
+      failureRedirect: `${CLIENT_URL}/settings?error=${platform} authentication failed`,
+      session: true,
+      scope:
+        platform.toLowerCase() === "linkedin"
+          ? ["r_emailaddress", "r_liteprofile", "w_member_social"]
+          : undefined,
+    })(req, res, next);
   });
-});
+};
 
-router.get("/twitter/callback", (req, res, next) => {
+// OAuth connect routes
+router.get(
+  "/twitter/connect",
+  verifyToken,
+  verifySession,
+  initOAuthConnect("Twitter")
+);
+router.get(
+  "/facebook/connect",
+  verifyToken,
+  verifySession,
+  initOAuthConnect("Facebook")
+);
+router.get(
+  "/linkedin/connect",
+  verifyToken,
+  verifySession,
+  initOAuthConnect("LinkedIn")
+);
+router.get(
+  "/instagram/connect",
+  verifyToken,
+  verifySession,
+  initOAuthConnect("Instagram")
+);
+
+// Common callback handler for all platforms
+const handleOAuthCallback = (platform) => async (req, res, next) => {
   const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
   const redirectToSettings = (error) => {
     const url = new URL(`${CLIENT_URL}/settings`);
@@ -39,424 +95,188 @@ router.get("/twitter/callback", (req, res, next) => {
     return res.redirect(url.toString());
   };
 
-  debugLog("Twitter Callback Debug", {
+  debugLog(`${platform} Callback Debug`, {
     sessionId: req.sessionID,
     hasSession: !!req.session,
     userId: req.session?.userId,
     query: req.query,
+    platform: platform,
   });
 
-  passport.authenticate("twitter", { session: false }, async (err, twitterUser) => {
-    if (err) {
-      console.error("Twitter auth error:", err);
-      return redirectToSettings(err.message);
-    }
-
-    if (!twitterUser) {
-      console.error("Twitter auth failed: No user returned");
-      return redirectToSettings("Failed to connect Twitter account");
-    }
-
-    debugLog("Twitter User Data", {
-      id: twitterUser.id,
-      username: twitterUser.username,
-      displayName: twitterUser.displayName,
-    });
-
-    const userId = req.session?.userId;
-    if (!userId) {
-      console.error("Twitter auth failed: No user ID in session");
-      return redirectToSettings("Please log in before connecting Twitter");
-    }
-
-    try {
-      const userRef = admin.firestore().collection("users").doc(userId);
-      await admin.firestore().runTransaction(async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists) {
-          debugLog("Creating new user document", userId);
-          transaction.set(userRef, {
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
-
-        debugLog("Updating user document with Twitter profile", userId);
-        transaction.update(userRef, {
-          twitterProfile: {
-            id: twitterUser.id,
-            username: twitterUser.username,
-            name: twitterUser.displayName,
-          },
-          twitterConnected: true,
-          twitterConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      });
-
-      debugLog("Firestore update successful", userId);
-      return redirectToSettings(null);
-    } catch (error) {
-      console.error("Error in Twitter callback:", error);
-      return redirectToSettings("Failed to connect Twitter account. Please try again.");
-    }
-  })(req, res, next);
-});
-
-// OAuth routes for Facebook
-router.get("/facebook/connect", verifyToken, verifySession, (req, res, next) => {
-  req.session.returnTo = `${process.env.CLIENT_URL || "http://localhost:5173"}/settings`;
-  debugLog("Facebook Connect Debug", {
-    sessionId: req.sessionID,
-    hasSession: !!req.session,
-    user: req.user,
-    uid: req.user?.uid,
-  });
-
-  req.session.save((err) => {
-    if (err) {
-      console.error("Session save error:", err);
-      return res.redirect(`${process.env.CLIENT_URL || "http://localhost:5173"}/settings?error=Failed to save session`);
-    }
-    debugLog("Session saved successfully", "proceeding with Facebook auth");
-    passport.authenticate("facebook")(req, res, next);
-  });
-});
-
-router.get("/facebook/callback", (req, res, next) => {
-  const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
-  const redirectToSettings = (error) => {
-    const url = new URL(`${CLIENT_URL}/settings`);
-    if (error) {
-      url.searchParams.set("error", encodeURIComponent(error));
-    }
-    return res.redirect(url.toString());
-  };
-
-  debugLog("Facebook Callback Debug", {
-    sessionId: req.sessionID,
-    hasSession: !!req.session,
-    userId: req.session?.userId,
-    query: req.query,
-  });
-
-  passport.authenticate("facebook", { session: false }, async (err, facebookUser) => {
-    if (err) {
-      console.error("Facebook auth error:", err);
-      return redirectToSettings(err.message);
-    }
-
-    if (!facebookUser) {
-      console.error("Facebook auth failed: No user returned");
-      return redirectToSettings("Failed to connect Facebook account");
-    }
-
-    debugLog("Facebook User Data", {
-      id: facebookUser.id,
-      username: facebookUser.username,
-      displayName: facebookUser.displayName,
-    });
-
-    const userId = req.session?.userId;
-    if (!userId) {
-      console.error("Facebook auth failed: No user ID in session");
-      return redirectToSettings("Please log in before connecting Facebook");
-    }
-
-    try {
-      const userRef = admin.firestore().collection("users").doc(userId);
-      await admin.firestore().runTransaction(async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists) {
-          debugLog("Creating new user document", userId);
-          transaction.set(userRef, {
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
-
-        debugLog("Updating user document with Facebook profile", userId);
-        transaction.update(userRef, {
-          facebookProfile: {
-            id: facebookUser.id,
-            username: facebookUser.username,
-            name: facebookUser.displayName,
-          },
-          facebookConnected: true,
-          facebookConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      });
-
-      debugLog("Firestore update successful", userId);
-      return redirectToSettings(null);
-    } catch (error) {
-      console.error("Error in Facebook callback:", error);
-      return redirectToSettings("Failed to connect Facebook account. Please try again.");
-    }
-  })(req, res, next);
-});
-
-// OAuth routes for LinkedIn
-router.get("/linkedin/connect", verifyToken, verifySession, (req, res, next) => {
-  req.session.returnTo = `${process.env.CLIENT_URL || "http://localhost:5173"}/settings`;
-  debugLog("LinkedIn Connect Debug", {
-    sessionId: req.sessionID,
-    hasSession: !!req.session,
-    user: req.user,
-    uid: req.user?.uid,
-  });
-
-  req.session.save((err) => {
-    if (err) {
-      console.error("Session save error:", err);
-      return res.redirect(`${process.env.CLIENT_URL || "http://localhost:5173"}/settings?error=Failed to save session`);
-    }
-    debugLog("Session saved successfully", "proceeding with LinkedIn auth");
-    passport.authenticate("linkedin")(req, res, next);
-  });
-});
-
-router.get("/linkedin/callback", (req, res, next) => {
-  const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
-  const redirectToSettings = (error) => {
-    const url = new URL(`${CLIENT_URL}/settings`);
-    if (error) {
-      url.searchParams.set("error", encodeURIComponent(error));
-    }
-    return res.redirect(url.toString());
-  };
-
-  debugLog("LinkedIn Callback Debug", {
-    sessionId: req.sessionID,
-    hasSession: !!req.session,
-    userId: req.session?.userId,
-    query: req.query,
-  });
-
-  passport.authenticate("linkedin", { session: false }, async (err, linkedinUser) => {
-    if (err) {
-      console.error("LinkedIn auth error:", err);
-      return redirectToSettings(err.message);
-    }
-
-    if (!linkedinUser) {
-      console.error("LinkedIn auth failed: No user returned");
-      return redirectToSettings("Failed to connect LinkedIn account");
-    }
-
-    debugLog("LinkedIn User Data", {
-      id: linkedinUser.id,
-      username: linkedinUser.username,
-      displayName: linkedinUser.displayName,
-    });
-
-    const userId = req.session?.userId;
-    if (!userId) {
-      console.error("LinkedIn auth failed: No user ID in session");
-      return redirectToSettings("Please log in before connecting LinkedIn");
-    }
-
-    try {
-      const userRef = admin.firestore().collection("users").doc(userId);
-      await admin.firestore().runTransaction(async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists) {
-          debugLog("Creating new user document", userId);
-          transaction.set(userRef, {
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
-
-        debugLog("Updating user document with LinkedIn profile", userId);
-        transaction.update(userRef, {
-          linkedinProfile: {
-            id: linkedinUser.id,
-            username: linkedinUser.username,
-            name: linkedinUser.displayName,
-          },
-          linkedinConnected: true,
-          linkedinConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      });
-
-      debugLog("Firestore update successful", userId);
-      return redirectToSettings(null);
-    } catch (error) {
-      console.error("Error in LinkedIn callback:", error);
-      return redirectToSettings("Failed to connect LinkedIn account. Please try again.");
-    }
-  })(req, res, next);
-});
-
-// OAuth routes for Instagram
-router.get("/instagram/connect", verifyToken, verifySession, (req, res, next) => {
-  req.session.returnTo = `${process.env.CLIENT_URL || "http://localhost:5173"}/settings`;
-  debugLog("Instagram Connect Debug", {
-    sessionId: req.sessionID,
-    hasSession: !!req.session,
-    user: req.user,
-    uid: req.user?.uid,
-  });
-
-  req.session.save((err) => {
-    if (err) {
-      console.error("Session save error:", err);
-      return res.redirect(`${process.env.CLIENT_URL || "http://localhost:5173"}/settings?error=Failed to save session`);
-    }
-    debugLog("Session saved successfully", "proceeding with Instagram auth");
-    passport.authenticate("instagram")(req, res, next);
-  });
-});
-
-router.get("/instagram/callback", (req, res, next) => {
-  const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
-  const redirectToSettings = (error) => {
-    const url = new URL(`${CLIENT_URL}/settings`);
-    if (error) {
-      url.searchParams.set("error", encodeURIComponent(error));
-    }
-    return res.redirect(url.toString());
-  };
-
-  debugLog("Instagram Callback Debug", {
-    sessionId: req.sessionID,
-    hasSession: !!req.session,
-    userId: req.session?.userId,
-    query: req.query,
-  });
-
-  passport.authenticate("instagram", { session: false }, async (err, instagramUser) => {
-    if (err) {
-      console.error("Instagram auth error:", err);
-      return redirectToSettings(err.message);
-    }
-
-    if (!instagramUser) {
-      console.error("Instagram auth failed: No user returned");
-      return redirectToSettings("Failed to connect Instagram account");
-    }
-
-    debugLog("Instagram User Data", {
-      id: instagramUser.id,
-      username: instagramUser.username,
-      displayName: instagramUser.displayName,
-    });
-
-    const userId = req.session?.userId;
-    if (!userId) {
-      console.error("Instagram auth failed: No user ID in session");
-      return redirectToSettings("Please log in before connecting Instagram");
-    }
-
-    try {
-      const userRef = admin.firestore().collection("users").doc(userId);
-      await admin.firestore().runTransaction(async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists) {
-          debugLog("Creating new user document", userId);
-          transaction.set(userRef, {
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
-
-        debugLog("Updating user document with Instagram profile", userId);
-        transaction.update(userRef, {
-          instagramProfile: {
-            id: instagramUser.id,
-            username: instagramUser.username,
-            name: instagramUser.displayName,
-          },
-          instagramConnected: true,
-          instagramConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      });
-
-      debugLog("Firestore update successful", userId);
-      return redirectToSettings(null);
-    } catch (error) {
-      console.error("Error in Instagram callback:", error);
-      return redirectToSettings("Failed to connect Instagram account. Please try again.");
-    }
-  })(req, res, next);
-});
-
-// Get connected accounts
-router.get("/connected-accounts", verifyToken, verifySession, async (req, res) => {
-  try {
-    debugLog("Getting connected accounts for user", req.user?.uid);
-    
-    const { uid } = req.user;
-    const userRef = admin.firestore().collection("users").doc(uid);
-    
-    try {
-      const userDoc = await userRef.get();
-      debugLog("User document exists", userDoc.exists);
-
-      if (!userDoc.exists) {
-        debugLog("Creating new user document", uid);
-        await userRef.set({
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        
-        // Return default accounts since we just created the document
-        return res.json([
-          { platform: "twitter", connected: false },
-          { platform: "facebook", connected: false },
-          { platform: "linkedin", connected: false },
-          { platform: "instagram", connected: false },
-        ]);
+  passport.authenticate(
+    platform.toLowerCase(),
+    { session: false },
+    async (err, user) => {
+      if (err) {
+        console.error(`${platform} auth error:`, err);
+        return redirectToSettings(err.message);
       }
 
-      const userData = userDoc.data();
-      debugLog("User data", {
-        hasTwitterProfile: !!userData.twitterProfile,
-        twitterConnected: userData.twitterConnected,
-        twitterUsername: userData.twitterProfile?.username
+      if (!user) {
+        console.error(`${platform} auth failed: No user returned`);
+        return redirectToSettings(`Failed to connect ${platform} account`);
+      }
+
+      debugLog(`${platform} User Data`, {
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
       });
 
-      // Check for Twitter-specific data first
-      const twitterProfile = userData.twitterProfile || null;
-      const twitterConnected = !!twitterProfile;
+      const userId = req.session?.userId;
+      if (!userId) {
+        console.error(`${platform} auth failed: No user ID in session`);
+        return redirectToSettings(
+          `Please log in before connecting ${platform}`
+        );
+      }
 
-      // Initialize response array with Twitter data
-      const accounts = [
-        {
-          platform: "twitter",
-          connected: twitterConnected,
-          accountName: twitterProfile?.username || null,
-          profileUrl: twitterProfile
-            ? `https://twitter.com/${twitterProfile.username}`
-            : null,
-        },
-      ];
+      try {
+        const userRef = admin.firestore().collection("users").doc(userId);
+        await admin.firestore().runTransaction(async (transaction) => {
+          const userDoc = await transaction.get(userRef);
+          if (!userDoc.exists) {
+            debugLog("Creating new user document", userId);
+            transaction.set(userRef, {
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
 
-      // Add other platforms with default values
-      ["facebook", "linkedin", "instagram"].forEach((platform) => {
-        accounts.push({
-          platform,
-          connected: false,
-          accountName: null,
-          profileUrl: null,
+          const platformLower = platform.toLowerCase();
+          const updateData = {
+            [`${platformLower}Profile`]: {
+              id: user.id,
+              username: user.username,
+              name: user.displayName,
+            },
+            [`${platformLower}Connected`]: true,
+            [`${platformLower}ConnectedAt`]:
+              admin.firestore.FieldValue.serverTimestamp(),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          };
+
+          // Store tokens if available
+          if (user.token) updateData[`${platformLower}Token`] = user.token;
+          if (user.tokenSecret)
+            updateData[`${platformLower}TokenSecret`] = user.tokenSecret;
+          if (user.accessToken)
+            updateData[`${platformLower}AccessToken`] = user.accessToken;
+          if (user.refreshToken)
+            updateData[`${platformLower}RefreshToken`] = user.refreshToken;
+
+          debugLog(`Updating user document with ${platform} profile`, userId);
+          transaction.update(userRef, updateData);
         });
-      });
 
-      debugLog("Returning accounts", accounts);
-      res.json(accounts);
-    } catch (error) {
-      console.error("Error accessing Firestore:", error);
-      throw error;
+        debugLog("Firestore update successful", userId);
+        return redirectToSettings(null);
+      } catch (error) {
+        console.error(`Error in ${platform} callback:`, error);
+        return redirectToSettings(
+          `Failed to connect ${platform} account. Please try again.`
+        );
+      }
     }
-  } catch (error) {
-    console.error("Error getting connected accounts:", error);
-    res.status(500).json({ error: "Failed to get connected accounts" });
+  )(req, res, next);
+};
+
+// OAuth callback routes
+router.get("/twitter/callback", verifySession, handleOAuthCallback("Twitter"));
+router.get(
+  "/facebook/callback",
+  verifySession,
+  handleOAuthCallback("Facebook")
+);
+router.get(
+  "/linkedin/callback",
+  verifySession,
+  handleOAuthCallback("LinkedIn")
+);
+router.get(
+  "/instagram/callback",
+  verifySession,
+  handleOAuthCallback("Instagram")
+);
+
+// Get connected accounts
+router.get(
+  "/connected-accounts",
+  verifyToken,
+  verifySession,
+  async (req, res) => {
+    try {
+      debugLog("Getting connected accounts for user", req.user?.uid);
+
+      const { uid } = req.user;
+      const userRef = admin.firestore().collection("users").doc(uid);
+
+      try {
+        const userDoc = await userRef.get();
+        debugLog("User document exists", userDoc.exists);
+
+        if (!userDoc.exists) {
+          debugLog("Creating new user document", uid);
+          await userRef.set({
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // Return default accounts since we just created the document
+          return res.json([
+            { platform: "twitter", connected: false },
+            { platform: "facebook", connected: false },
+            { platform: "linkedin", connected: false },
+            { platform: "instagram", connected: false },
+          ]);
+        }
+
+        const userData = userDoc.data();
+        const platforms = ["twitter", "facebook", "linkedin", "instagram"];
+
+        // Initialize accounts array
+        const accounts = platforms.map((platform) => {
+          const profile = userData[`${platform}Profile`] || null;
+          const connected = !!profile && userData[`${platform}Connected`];
+
+          let profileUrl = null;
+          if (profile?.username) {
+            switch (platform) {
+              case "twitter":
+                profileUrl = `https://twitter.com/${profile.username}`;
+                break;
+              case "facebook":
+                profileUrl = `https://facebook.com/${profile.username}`;
+                break;
+              case "linkedin":
+                profileUrl = `https://linkedin.com/in/${profile.username}`;
+                break;
+              case "instagram":
+                profileUrl = `https://instagram.com/${profile.username}`;
+                break;
+            }
+          }
+
+          return {
+            platform,
+            connected,
+            accountName: profile?.username || null,
+            profileUrl,
+          };
+        });
+
+        debugLog("Returning accounts", accounts);
+        res.json(accounts);
+      } catch (error) {
+        console.error("Error accessing Firestore:", error);
+        throw error;
+      }
+    } catch (error) {
+      console.error("Error getting connected accounts:", error);
+      res.status(500).json({ error: "Failed to get connected accounts" });
+    }
   }
-});
+);
 
 // Disconnect platform account
 router.delete(
@@ -474,27 +294,22 @@ router.delete(
         return res.status(400).json({ error: "Invalid platform" });
       }
 
-      if (platform === "twitter") {
-        await admin.firestore().collection("users").doc(uid).update({
-          twitterProfile: null,
-          twitterConnected: false,
-          twitterDisconnectedAt: admin.firestore.FieldValue.serverTimestamp(),
-          twitterToken: null,
-          twitterTokenSecret: null,
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      } else {
-        await admin.firestore()
-          .collection("users")
-          .doc(uid)
-          .update({
-            [`connectedAccounts.${platform}`]: {
-              connected: false,
-              disconnectedAt: admin.firestore.FieldValue.serverTimestamp(),
-            },
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-          });
-      }
+      const platformLower = platform.toLowerCase();
+      const updateData = {
+        [`${platformLower}Profile`]: null,
+        [`${platformLower}Connected`]: false,
+        [`${platformLower}DisconnectedAt`]:
+          admin.firestore.FieldValue.serverTimestamp(),
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      // Clear tokens if they exist
+      updateData[`${platformLower}Token`] = null;
+      updateData[`${platformLower}TokenSecret`] = null;
+      updateData[`${platformLower}AccessToken`] = null;
+      updateData[`${platformLower}RefreshToken`] = null;
+
+      await admin.firestore().collection("users").doc(uid).update(updateData);
 
       res.json({ success: true });
     } catch (error) {
