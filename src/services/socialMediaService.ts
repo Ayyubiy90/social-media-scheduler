@@ -43,28 +43,18 @@ export const socialMediaService = {
   // Get connected accounts
   async getConnectedAccounts(): Promise<SocialMediaAccount[]> {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No auth token found');
-      }
-
       const response = await axiosInstance.get<SocialMediaAccount[]>(
-        `${API_URL}/social/connected-accounts`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        `${API_URL}/social/connected-accounts`
       );
       return response.data;
     } catch (error) {
       console.error("Error getting connected accounts:", error);
       // Return a default structure with all platforms disconnected
       return [
-        { platform: 'twitter', connected: false },
-        { platform: 'facebook', connected: false },
-        { platform: 'linkedin', connected: false },
-        { platform: 'instagram', connected: false }
+        { platform: "twitter", connected: false },
+        { platform: "facebook", connected: false },
+        { platform: "linkedin", connected: false },
+        { platform: "instagram", connected: false },
       ];
     }
   },
@@ -73,19 +63,20 @@ export const socialMediaService = {
   async connectAccount(platform: string): Promise<void> {
     try {
       // For Twitter, use a direct redirect in the same window
-      if (platform === 'twitter') {
+      if (platform === "twitter") {
         const currentUrl = window.location.href;
-        localStorage.setItem('returnUrl', currentUrl);
+        localStorage.setItem("returnUrl", currentUrl);
         // Add state parameter to track the connection attempt
-        localStorage.setItem('twitterConnecting', 'true');
+        localStorage.setItem("twitterConnecting", "true");
+        // Use fetch directly to avoid axios interceptors
         window.location.href = `${API_URL}/social/twitter/connect`;
         return;
       }
 
-      // For other platforms, we need the auth token
-      const token = localStorage.getItem('token');
+      // For other platforms, ensure user is authenticated
+      const token = localStorage.getItem("token");
       if (!token) {
-        throw new Error('You must be logged in to connect social accounts');
+        throw new Error("You must be logged in to connect social accounts");
       }
 
       // For other platforms, use popup
@@ -163,16 +154,12 @@ export const socialMediaService = {
   // Disconnect account
   async disconnectAccount(platform: string): Promise<void> {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        throw new Error('No auth token found');
+        throw new Error("You must be logged in to disconnect social accounts");
       }
 
-      await axiosInstance.delete(`${API_URL}/social/${platform}/disconnect`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      await axiosInstance.delete(`${API_URL}/social/${platform}/disconnect`);
     } catch (error) {
       console.error(`Error disconnecting from ${platform}:`, error);
       throw error;
@@ -186,9 +173,9 @@ export const socialMediaService = {
     mediaUrls?: string[]
   ): Promise<PostResult> {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        throw new Error('No auth token found');
+        throw new Error("You must be logged in to publish posts");
       }
 
       const response = await axiosInstance.post<PostResult>(
@@ -196,11 +183,6 @@ export const socialMediaService = {
         {
           content,
           mediaUrls,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
         }
       );
       return response.data;
@@ -216,19 +198,14 @@ export const socialMediaService = {
   // Get platform-specific post preview
   async getPostPreview(platform: string, content: string): Promise<string> {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        throw new Error('No auth token found');
+        throw new Error("You must be logged in to preview posts");
       }
 
       const response = await axiosInstance.post<PostPreview>(
         `${API_URL}/social/${platform}/preview`,
-        { content },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        { content }
       );
       return response.data.preview;
     } catch (error) {
@@ -244,9 +221,9 @@ export const socialMediaService = {
     mediaUrls?: string[]
   ): Promise<PostValidation> {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        throw new Error('No auth token found');
+        throw new Error("You must be logged in to validate posts");
       }
 
       const response = await axiosInstance.post<PostValidation>(
@@ -254,11 +231,6 @@ export const socialMediaService = {
         {
           content,
           mediaUrls,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
         }
       );
       return response.data;
@@ -271,18 +243,13 @@ export const socialMediaService = {
   // Get platform posting limits and guidelines
   async getPlatformLimits(platform: string): Promise<PlatformLimits> {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        throw new Error('No auth token found');
+        throw new Error("You must be logged in to get platform limits");
       }
 
       const response = await axiosInstance.get<PlatformLimits>(
-        `${API_URL}/social/${platform}/limits`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        `${API_URL}/social/${platform}/limits`
       );
       return response.data;
     } catch (error) {

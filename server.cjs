@@ -48,18 +48,44 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "default-secret-key",
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
+    store: new session.MemoryStore(), // Use memory store for development
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       domain: process.env.COOKIE_DOMAIN || "localhost",
       maxAge: parseInt(process.env.COOKIE_MAX_AGE) || 24 * 60 * 60 * 1000,
-      sameSite: "lax"
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax"
     },
-    name: 'social-scheduler.sid'
+    name: 'social-scheduler.sid',
+    rolling: true
   })
 );
+
+// Debug middleware for session
+app.use((req, res, next) => {
+  console.log('Session Debug:', {
+    sessionId: req.sessionID,
+    hasSession: !!req.session,
+    userId: req.session?.userId,
+    isAuthenticated: req.isAuthenticated?.(),
+    user: req.user
+  });
+  next();
+});
+
+// Debug middleware for session
+app.use((req, res, next) => {
+  console.log('Session Debug:', {
+    sessionId: req.sessionID,
+    hasSession: !!req.session,
+    userId: req.session?.userId,
+    isAuthenticated: req.isAuthenticated?.(),
+    user: req.user
+  });
+  next();
+});
 
 // Initialize Passport and restore authentication state from session
 app.use(passport.initialize());

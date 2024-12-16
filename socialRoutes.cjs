@@ -8,46 +8,162 @@ const {
 
 // OAuth routes for each platform
 router.get("/twitter/connect", (req, res, next) => {
-  // Store return URL in session
+  // Store return URL and user ID in session
   req.session.returnTo = `${
     process.env.CLIENT_URL || "http://localhost:5173"
   }/settings`;
 
-  passport.authenticate("twitter")(req, res, next);
+  console.log("Twitter Connect Debug:", {
+    sessionId: req.sessionID,
+    hasSession: !!req.session,
+    user: req.user,
+    uid: req.user?.uid,
+  });
+
+  // Store user ID in session before Twitter auth
+  if (req.user?.uid) {
+    req.session.userId = req.user.uid;
+    console.log("Stored user ID in session:", req.user.uid);
+  } else {
+    console.error("No user ID available to store in session");
+    return res.redirect(
+      `${
+        process.env.CLIENT_URL || "http://localhost:5173"
+      }/settings?error=Please log in before connecting Twitter`
+    );
+  }
+
+  // Save session before redirecting to Twitter
+  req.session.save((err) => {
+    if (err) {
+      console.error("Session save error:", err);
+      return res.redirect(
+        `${
+          process.env.CLIENT_URL || "http://localhost:5173"
+        }/settings?error=Failed to save session`
+      );
+    }
+    console.log("Session saved successfully, proceeding with Twitter auth");
+    passport.authenticate("twitter")(req, res, next);
+  });
 });
 
 router.get("/twitter/callback", (req, res, next) => {
-  passport.authenticate("twitter", (err, user) => {
-    if (err) {
-      console.error("Twitter auth error:", err);
-      return res.redirect(
-        `${
-          process.env.CLIENT_URL || "http://localhost:5173"
-        }/settings?error=${encodeURIComponent(err.message)}`
-      );
+  const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+  const redirectToSettings = (error) => {
+    const url = new URL(`${CLIENT_URL}/settings`);
+    if (error) {
+      url.searchParams.set("error", encodeURIComponent(error));
     }
-    if (!user) {
-      return res.redirect(
-        `${
-          process.env.CLIENT_URL || "http://localhost:5173"
-        }/settings?error=twitter_auth_failed`
-      );
-    }
-    req.logIn(user, (loginErr) => {
-      if (loginErr) {
-        console.error("Login error:", loginErr);
-        return res.redirect(
-          `${
-            process.env.CLIENT_URL || "http://localhost:5173"
-          }/settings?error=${encodeURIComponent(loginErr.message)}`
-        );
+    url.searchParams.set("oauth_callback", "true");
+    return res.redirect(url.toString());
+  };
+
+  console.log("Twitter Callback Debug:", {
+    sessionId: req.sessionID,
+    hasSession: !!req.session,
+    userId: req.session?.userId,
+    isAuthenticated: req.isAuthenticated?.(),
+    user: req.user,
+    query: req.query,
+    oauthToken: req.query.oauth_token,
+    oauthVerifier: req.query.oauth_verifier,
+  });
+
+  // Check if we have OAuth parameters
+  if (!req.query.oauth_token || !req.query.oauth_verifier) {
+    console.error("Missing OAuth parameters:", req.query);
+    return redirectToSettings("Twitter authentication was cancelled or failed");
+  }
+
+  passport.authenticate(
+    "twitter",
+    { session: false },
+    async (err, twitterUser) => {
+      if (err) {
+        console.error("Twitter auth error:", err);
+        return redirectToSettings(err.message);
       }
-      // Redirect back to the client settings page
-      res.redirect(
-        `${process.env.CLIENT_URL || "http://localhost:5173"}/settings`
-      );
-    });
-  })(req, res, next);
+
+      if (!twitterUser) {
+        console.error("Twitter auth failed: No user returned");
+        return redirectToSettings("Failed to connect Twitter account");
+      }
+
+      // Check if we have the original user ID in session
+      const userId = req.session?.userId;
+      if (!userId) {
+        console.error("Twitter auth failed: No user ID in session");
+        return redirectToSettings("Please log in before connecting Twitter");
+      }
+
+      // Restore the user ID from session
+      req.user = { uid: userId };
+
+      // Update the user's Twitter profile in Firestore
+      const admin = require("firebase-admin");
+      const db = admin.firestore();
+
+      try {
+        console.log("Updating Firestore with Twitter profile:", {
+          userId: req.user.uid,
+          twitterUsername: twitterUser.username,
+          twitterId: twitterUser.id,
+        });
+
+        // Get user document reference
+        const userRef = db.collection("users").doc(req.user.uid);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          throw new Error("User document not found");
+        }
+
+        // Update user document with Twitter profile
+        await userRef.update({
+          twitterProfile: {
+            id: twitterUser.id,
+            username: twitterUser.username,
+            name: twitterUser.displayName,
+            profile_image_url: twitterUser.photos?.[0]?.value,
+          },
+          twitterConnected: true,
+          twitterConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
+          twitterToken: twitterUser.token,
+          twitterTokenSecret: twitterUser.tokenSecret,
+          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        console.log("Firestore update successful");
+
+        // Save session changes
+        await new Promise((resolve, reject) => {
+          req.session.save((err) => {
+            if (err) {
+              console.error("Session save error:", err);
+              reject(err);
+            } else {
+              console.log("Session saved successfully");
+              resolve();
+            }
+          });
+        });
+
+        // Clear Twitter connection state
+        delete req.session.userId;
+
+        console.log("Twitter connection successful");
+        return redirectToSettings(null);
+      } catch (error) {
+        console.error("Error in Twitter callback:", error);
+        const errorMessage =
+          error.message === "User document not found"
+            ? "User not found. Please try logging in again."
+            : "Failed to connect Twitter account. Please try again.";
+        return redirectToSettings(errorMessage);
+      }
+    }
+  )(req, res, next);
 });
 
 // Get connected accounts
@@ -131,6 +247,9 @@ router.delete(
           twitterProfile: null,
           twitterConnected: false,
           twitterDisconnectedAt: admin.firestore.FieldValue.serverTimestamp(),
+          twitterToken: null,
+          twitterTokenSecret: null,
+          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
         });
       } else {
         await db
@@ -141,6 +260,7 @@ router.delete(
               connected: false,
               disconnectedAt: admin.firestore.FieldValue.serverTimestamp(),
             },
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
           });
       }
 

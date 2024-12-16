@@ -38,49 +38,21 @@ if (process.env.TWITTER_API_KEY && process.env.TWITTER_API_SECRET) {
             }
           });
 
-          const userRef = await db
-            .collection("users")
-            .where("twitterId", "==", profile.id)
-            .get();
-
-          if (!userRef.empty) {
-            const user = userRef.docs[0].data();
-            const updateData = {
-              lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-              twitterProfile: {
-                id: profile.id,
-                username: profile.username,
-                name: profile.displayName,
-                profile_image_url: profile.photos?.[0]?.value
-              },
-              twitterConnected: true,
-              twitterConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
-              twitterToken: token,
-              twitterTokenSecret: tokenSecret
-            };
-            await userRef.docs[0].ref.update(updateData);
-            return done(null, { id: userRef.docs[0].id, ...user, ...updateData });
+          // Get the current user's ID from the session
+          const userId = req.session?.userId;
+          if (!userId) {
+            return done(new Error('User must be logged in to connect Twitter'), null);
           }
 
-          const newUser = {
-            twitterId: profile.id,
+          // Return the Twitter profile with tokens
+          return done(null, {
+            id: profile.id,
+            username: profile.username,
             displayName: profile.displayName,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            lastLogin: admin.firestore.FieldValue.serverTimestamp(),
-            twitterProfile: {
-              id: profile.id,
-              username: profile.username,
-              name: profile.displayName,
-              profile_image_url: profile.photos?.[0]?.value
-            },
-            twitterConnected: true,
-            twitterConnectedAt: admin.firestore.FieldValue.serverTimestamp(),
-            twitterToken: token,
-            twitterTokenSecret: tokenSecret
-          };
-
-          const docRef = await db.collection("users").add(newUser);
-          return done(null, { id: docRef.id, ...newUser });
+            photos: profile.photos,
+            token,
+            tokenSecret
+          });
         } catch (error) {
           console.error("Twitter Strategy Error:", error);
           return done(error, null);

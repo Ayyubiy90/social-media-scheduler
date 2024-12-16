@@ -54,18 +54,6 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Function to check if URL contains OAuth error
-  const checkForOAuthError = useCallback(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const oauthError = urlParams.get("error");
-    if (oauthError) {
-      setError(decodeURIComponent(oauthError).replace(/_/g, " "));
-      // Remove error from URL
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, "", newUrl);
-    }
-  }, []);
-
   const refreshAccounts = useCallback(async () => {
     setLoading(true);
     try {
@@ -74,7 +62,7 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
       setError(null);
     } catch (err) {
       // Don't show error for auth-related issues during Twitter flow
-      if (localStorage.getItem("twitterConnecting") === "true") {
+      if (localStorage.getItem('twitterConnecting') === 'true') {
         return;
       }
       const errorMessage =
@@ -91,32 +79,39 @@ export function SocialMediaProvider({ children }: { children: ReactNode }) {
   // Handle OAuth callbacks and user changes
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const hasCallback = urlParams.has("oauth_token") || urlParams.has("code");
-    const wasConnectingTwitter =
-      localStorage.getItem("twitterConnecting") === "true";
+    const oauthToken = urlParams.get("oauth_token");
+    const oauthVerifier = urlParams.get("oauth_verifier");
+    const wasConnectingTwitter = localStorage.getItem('twitterConnecting') === 'true';
+    const oauthError = urlParams.get("error");
 
-    if (hasCallback && wasConnectingTwitter) {
-      // This is a Twitter OAuth callback
-      localStorage.removeItem("twitterConnecting");
-      setTimeout(() => {
-        refreshAccounts();
-        // Clean up URL
-        window.history.replaceState({}, "", window.location.pathname);
-      }, 1000);
-    } else if (wasConnectingTwitter) {
-      // Twitter connection was attempted but failed
-      localStorage.removeItem("twitterConnecting");
-      setError("Twitter connection failed or was cancelled");
-      // Clean up URL
-      window.history.replaceState({}, "", window.location.pathname);
-    } else {
-      // Normal mount or user change
-      checkForOAuthError();
-      if (user?.uid) {
-        refreshAccounts();
+    // Clean up function to remove Twitter connecting state
+    const cleanupTwitterState = () => {
+      localStorage.removeItem('twitterConnecting');
+      window.history.replaceState({}, '', window.location.pathname);
+    };
+
+    if (wasConnectingTwitter) {
+      if (oauthToken && oauthVerifier) {
+        // Successful Twitter callback
+        console.log("Twitter OAuth callback received");
+        setTimeout(() => {
+          refreshAccounts();
+          cleanupTwitterState();
+        }, 1000);
+      } else if (oauthError) {
+        // Twitter returned an error
+        setError(decodeURIComponent(oauthError).replace(/_/g, " "));
+        cleanupTwitterState();
+      } else {
+        // No OAuth parameters found
+        setError('Twitter connection was cancelled. Please try again.');
+        cleanupTwitterState();
       }
+    } else if (user?.uid) {
+      // Normal mount or user change
+      refreshAccounts();
     }
-  }, [user?.uid, checkForOAuthError, refreshAccounts]);
+  }, [user?.uid, refreshAccounts]);
 
   const connectAccount = async (platform: string) => {
     setLoading(true);
