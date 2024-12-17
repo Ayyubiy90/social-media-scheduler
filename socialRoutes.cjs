@@ -47,14 +47,29 @@ const initOAuthConnect = (platform) => async (req, res, next) => {
       );
     }
     debugLog("Session saved successfully", `proceeding with ${platform} auth`);
-    passport.authenticate(platform.toLowerCase(), {
-      failureRedirect: `${CLIENT_URL}/settings?error=${platform} authentication failed`,
-      session: true,
-      scope:
-        platform.toLowerCase() === "linkedin"
-          ? ["r_emailaddress", "r_liteprofile", "w_member_social"]
-          : undefined,
-    })(req, res, next);
+  const authOptions = {
+    failureRedirect: `${CLIENT_URL}/settings?error=${platform} authentication failed`,
+    session: true,
+    state: req.query.state || true
+  };
+
+    // Platform-specific configurations
+    switch (platform.toLowerCase()) {
+      case 'facebook':
+        authOptions.scope = ['email', 'public_profile'];
+        break;
+      case 'linkedin':
+        authOptions.scope = ['r_emailaddress', 'r_liteprofile'];
+        break;
+      case 'twitter':
+        // Twitter-specific options if needed
+        break;
+      case 'instagram':
+        // Instagram-specific options if needed
+        break;
+    }
+
+    passport.authenticate(platform.toLowerCase(), authOptions)(req, res, next);
   });
 };
 
@@ -87,13 +102,6 @@ router.get(
 // Common callback handler for all platforms
 const handleOAuthCallback = (platform) => async (req, res, next) => {
   const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
-  const redirectToSettings = (error) => {
-    const url = new URL(`${CLIENT_URL}/settings`);
-    if (error) {
-      url.searchParams.set("error", encodeURIComponent(error));
-    }
-    return res.redirect(url.toString());
-  };
 
   debugLog(`${platform} Callback Debug`, {
     sessionId: req.sessionID,
@@ -109,12 +117,44 @@ const handleOAuthCallback = (platform) => async (req, res, next) => {
     async (err, user) => {
       if (err) {
         console.error(`${platform} auth error:`, err);
-        return redirectToSettings(err.message);
+        // Send error message via postMessage and close
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <script>
+                window.opener.postMessage(JSON.stringify({
+                  type: 'oauth_callback',
+                  status: 'error',
+                  error: ${JSON.stringify(err.message)}
+                }), '${CLIENT_URL}');
+                window.close();
+              </script>
+            </body>
+          </html>
+        `;
+        return res.send(html);
       }
 
       if (!user) {
         console.error(`${platform} auth failed: No user returned`);
-        return redirectToSettings(`Failed to connect ${platform} account`);
+        // Send error message via postMessage and close
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <script>
+                window.opener.postMessage(JSON.stringify({
+                  type: 'oauth_callback',
+                  status: 'error',
+                  error: 'Failed to connect ${platform} account'
+                }), '${CLIENT_URL}');
+                window.close();
+              </script>
+            </body>
+          </html>
+        `;
+        return res.send(html);
       }
 
       debugLog(`${platform} User Data`, {
@@ -126,9 +166,23 @@ const handleOAuthCallback = (platform) => async (req, res, next) => {
       const userId = req.session?.userId;
       if (!userId) {
         console.error(`${platform} auth failed: No user ID in session`);
-        return redirectToSettings(
-          `Please log in before connecting ${platform}`
-        );
+        // Send error message via postMessage and close
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <script>
+                window.opener.postMessage(JSON.stringify({
+                  type: 'oauth_callback',
+                  status: 'error',
+                  error: 'Please log in before connecting ${platform}'
+                }), '${CLIENT_URL}');
+                window.close();
+              </script>
+            </body>
+          </html>
+        `;
+        return res.send(html);
       }
 
       try {
@@ -170,12 +224,41 @@ const handleOAuthCallback = (platform) => async (req, res, next) => {
         });
 
         debugLog("Firestore update successful", userId);
-        return redirectToSettings(null);
+        // Send success message via postMessage and close
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <script>
+                window.opener.postMessage(JSON.stringify({
+                  type: 'oauth_callback',
+                  status: 'success'
+                }), '${CLIENT_URL}');
+                window.close();
+              </script>
+            </body>
+          </html>
+        `;
+        return res.send(html);
       } catch (error) {
         console.error(`Error in ${platform} callback:`, error);
-        return redirectToSettings(
-          `Failed to connect ${platform} account. Please try again.`
-        );
+        // Send error message via postMessage and close
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <script>
+                window.opener.postMessage(JSON.stringify({
+                  type: 'oauth_callback',
+                  status: 'error',
+                  error: 'Failed to connect ${platform} account. Please try again.'
+                }), '${CLIENT_URL}');
+                window.close();
+              </script>
+            </body>
+          </html>
+        `;
+        return res.send(html);
       }
     }
   )(req, res, next);

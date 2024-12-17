@@ -34,12 +34,17 @@ const corsOptions = {
   origin: CLIENT_URL,
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
   exposedHeaders: ["Set-Cookie"],
+  preflightContinue: true,
+  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
+
+// Trust first proxy for secure cookies
+app.set('trust proxy', 1);
 
 // Cookie parser middleware
 app.use(cookieParser(process.env.SESSION_SECRET));
@@ -52,17 +57,19 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "default-secret-key",
-    resave: true,
-    saveUninitialized: true,
+    resave: false,
+    saveUninitialized: false,
     store: new session.MemoryStore(),
     cookie: {
-      secure: false, // Set to false for development
+      secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       path: "/",
+      domain: process.env.COOKIE_DOMAIN || 'localhost'
     },
     name: "social-scheduler.sid",
+    rolling: true,
   })
 );
 

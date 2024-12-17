@@ -1,6 +1,9 @@
 require("dotenv").config();
 const passport = require("passport");
 const TwitterStrategy = require("passport-twitter").Strategy;
+const FacebookStrategy = require("passport-facebook").Strategy;
+const LinkedInStrategy = require("passport-linkedin-oauth2").Strategy;
+const InstagramStrategy = require("passport-instagram").Strategy;
 const admin = require("firebase-admin");
 const db = require("../../firebaseConfig.cjs");
 
@@ -13,11 +16,17 @@ console.log("OAuth Configuration:", {
     apiSecretExists: !!process.env.TWITTER_API_SECRET,
     callbackUrlExists: !!process.env.TWITTER_CALLBACK_URL,
   },
+  facebook: {
+    appIdExists: !!process.env.FACEBOOK_APP_ID,
+    appSecretExists: !!process.env.FACEBOOK_APP_SECRET,
+    callbackUrlExists: !!process.env.FACEBOOK_CALLBACK_URL,
+  },
+  linkedin: {
+    clientIdExists: !!process.env.LINKEDIN_CLIENT_ID,
+    clientSecretExists: !!process.env.LINKEDIN_CLIENT_SECRET,
+    callbackUrlExists: !!process.env.LINKEDIN_CALLBACK_URL,
+  }
 });
-
-const FacebookStrategy = require("passport-facebook").Strategy;
-const LinkedInStrategy = require("passport-linkedin-oauth2").Strategy;
-const InstagramStrategy = require("passport-instagram").Strategy;
 
 // Configure Twitter Strategy
 if (process.env.TWITTER_API_KEY && process.env.TWITTER_API_SECRET) {
@@ -41,16 +50,14 @@ if (process.env.TWITTER_API_KEY && process.env.TWITTER_API_SECRET) {
               id: profile.id,
               displayName: profile.displayName,
               username: profile.username,
-              _json: profile._json, // Add raw profile data for debugging
+              _json: profile._json
             },
-            headers: req.headers, // Add headers for debugging
-            session: req.session, // Add session for debugging
+            headers: req.headers,
+            session: req.session
           });
 
-          // Get the current user's ID from the session
           const userId = req.session?.userId;
           if (!userId) {
-            // Try to get user ID from the Authorization header
             const authHeader = req.headers.authorization;
             if (authHeader && authHeader.startsWith("Bearer ")) {
               const idToken = authHeader.split("Bearer ")[1];
@@ -60,20 +67,13 @@ if (process.env.TWITTER_API_KEY && process.env.TWITTER_API_SECRET) {
                 console.log("Retrieved user ID from token:", decodedToken.uid);
               } catch (error) {
                 console.error("Error verifying ID token:", error);
-                return done(
-                  new Error("User must be logged in to connect Twitter"),
-                  null
-                );
+                return done(new Error("User must be logged in to connect Twitter"), null);
               }
             } else {
-              return done(
-                new Error("User must be logged in to connect Twitter"),
-                null
-              );
+              return done(new Error("User must be logged in to connect Twitter"), null);
             }
           }
 
-          // Return the Twitter profile with tokens
           return done(null, {
             id: profile.id,
             username: profile.username,
@@ -84,6 +84,132 @@ if (process.env.TWITTER_API_KEY && process.env.TWITTER_API_SECRET) {
           });
         } catch (error) {
           console.error("Twitter Strategy Error:", error);
+          return done(error, null);
+        }
+      }
+    )
+  );
+}
+
+// Configure Facebook Strategy
+if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
+  passport.use(
+    new FacebookStrategy(
+      {
+        clientID: process.env.FACEBOOK_APP_ID,
+        clientSecret: process.env.FACEBOOK_APP_SECRET,
+        callbackURL: process.env.FACEBOOK_CALLBACK_URL,
+        profileFields: ['id', 'displayName', 'name', 'email', 'photos'],
+        passReqToCallback: true,
+        enableProof: true,
+        state: true,
+        scope: ['email', 'public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts'],
+        proxy: true,
+        version: '13.0'
+      },
+      async (req, accessToken, refreshToken, profile, done) => {
+        try {
+          console.log("Facebook Auth Response:", {
+            accessToken,
+            refreshToken,
+            profile: {
+              id: profile.id,
+              displayName: profile.displayName,
+              name: profile.name,
+              _json: profile._json
+            },
+            headers: req.headers,
+            session: req.session
+          });
+
+          const userId = req.session?.userId;
+          if (!userId) {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith("Bearer ")) {
+              const idToken = authHeader.split("Bearer ")[1];
+              try {
+                const decodedToken = await admin.auth().verifyIdToken(idToken);
+                req.session.userId = decodedToken.uid;
+              } catch (error) {
+                return done(new Error("User must be logged in to connect Facebook"), null);
+              }
+            } else {
+              return done(new Error("User must be logged in to connect Facebook"), null);
+            }
+          }
+
+          return done(null, {
+            id: profile.id,
+            displayName: profile.displayName,
+            photos: profile.photos,
+            accessToken,
+            refreshToken,
+          });
+        } catch (error) {
+          console.error("Facebook Strategy Error:", error);
+          return done(error, null);
+        }
+      }
+    )
+  );
+}
+
+// Configure LinkedIn Strategy
+if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
+  passport.use(
+    new LinkedInStrategy(
+      {
+        clientID: process.env.LINKEDIN_CLIENT_ID,
+        clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
+        callbackURL: process.env.LINKEDIN_CALLBACK_URL,
+        passReqToCallback: true,
+        state: true,
+        proxy: true,
+        auth: {
+          authType: 'reauthenticate'
+        },
+        scope: ['r_emailaddress', 'r_liteprofile', 'w_member_social'],
+        version: '2'
+      },
+      async (req, accessToken, refreshToken, profile, done) => {
+        try {
+          console.log("LinkedIn Auth Response:", {
+            accessToken,
+            refreshToken,
+            profile: {
+              id: profile.id,
+              displayName: profile.displayName,
+              _json: profile._json
+            },
+            headers: req.headers,
+            session: req.session
+          });
+
+          const userId = req.session?.userId;
+          if (!userId) {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith("Bearer ")) {
+              const idToken = authHeader.split("Bearer ")[1];
+              try {
+                const decodedToken = await admin.auth().verifyIdToken(idToken);
+                req.session.userId = decodedToken.uid;
+              } catch (error) {
+                return done(new Error("User must be logged in to connect LinkedIn"), null);
+              }
+            } else {
+              return done(new Error("User must be logged in to connect LinkedIn"), null);
+            }
+          }
+
+          return done(null, {
+            id: profile.id,
+            displayName: profile.displayName,
+            photos: profile.photos,
+            accessToken,
+            refreshToken,
+          });
+        } catch (error) {
+          console.error("LinkedIn Strategy Error:", error);
           return done(error, null);
         }
       }
@@ -112,158 +238,5 @@ passport.deserializeUser(async (id, done) => {
     done(error, null);
   }
 });
-
-// Configure Facebook Strategy
-if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
-  passport.use(
-    new FacebookStrategy(
-      {
-        clientID: process.env.FACEBOOK_APP_ID,
-        clientSecret: process.env.FACEBOOK_APP_SECRET,
-        callbackURL: process.env.FACEBOOK_CALLBACK_URL,
-        profileFields: ["id", "displayName", "photos", "email"],
-        passReqToCallback: true,
-      },
-      async (req, accessToken, refreshToken, profile, done) => {
-        try {
-          const userId = req.session?.userId;
-          if (!userId) {
-            const authHeader = req.headers.authorization;
-            if (authHeader && authHeader.startsWith("Bearer ")) {
-              const idToken = authHeader.split("Bearer ")[1];
-              try {
-                const decodedToken = await admin.auth().verifyIdToken(idToken);
-                req.session.userId = decodedToken.uid;
-              } catch (error) {
-                return done(
-                  new Error("User must be logged in to connect Facebook"),
-                  null
-                );
-              }
-            } else {
-              return done(
-                new Error("User must be logged in to connect Facebook"),
-                null
-              );
-            }
-          }
-
-          return done(null, {
-            id: profile.id,
-            displayName: profile.displayName,
-            photos: profile.photos,
-            accessToken,
-            refreshToken,
-          });
-        } catch (error) {
-          console.error("Facebook Strategy Error:", error);
-          return done(error, null);
-        }
-      }
-    )
-  );
-}
-
-// Configure LinkedIn Strategy
-if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
-  passport.use(
-    new LinkedInStrategy(
-      {
-        clientID: process.env.LINKEDIN_CLIENT_ID,
-        clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
-        callbackURL: process.env.LINKEDIN_CALLBACK_URL,
-        scope: ["r_emailaddress", "r_liteprofile", "w_member_social"],
-        passReqToCallback: true,
-      },
-      async (req, accessToken, refreshToken, profile, done) => {
-        try {
-          const userId = req.session?.userId;
-          if (!userId) {
-            const authHeader = req.headers.authorization;
-            if (authHeader && authHeader.startsWith("Bearer ")) {
-              const idToken = authHeader.split("Bearer ")[1];
-              try {
-                const decodedToken = await admin.auth().verifyIdToken(idToken);
-                req.session.userId = decodedToken.uid;
-              } catch (error) {
-                return done(
-                  new Error("User must be logged in to connect LinkedIn"),
-                  null
-                );
-              }
-            } else {
-              return done(
-                new Error("User must be logged in to connect LinkedIn"),
-                null
-              );
-            }
-          }
-
-          return done(null, {
-            id: profile.id,
-            displayName: profile.displayName,
-            photos: profile.photos,
-            accessToken,
-            refreshToken,
-          });
-        } catch (error) {
-          console.error("LinkedIn Strategy Error:", error);
-          return done(error, null);
-        }
-      }
-    )
-  );
-}
-
-// Configure Instagram Strategy
-if (process.env.INSTAGRAM_CLIENT_ID && process.env.INSTAGRAM_CLIENT_SECRET) {
-  passport.use(
-    new InstagramStrategy(
-      {
-        clientID: process.env.INSTAGRAM_CLIENT_ID,
-        clientSecret: process.env.INSTAGRAM_CLIENT_SECRET,
-        callbackURL: process.env.INSTAGRAM_CALLBACK_URL,
-        passReqToCallback: true,
-      },
-      async (req, accessToken, refreshToken, profile, done) => {
-        try {
-          const userId = req.session?.userId;
-          if (!userId) {
-            const authHeader = req.headers.authorization;
-            if (authHeader && authHeader.startsWith("Bearer ")) {
-              const idToken = authHeader.split("Bearer ")[1];
-              try {
-                const decodedToken = await admin.auth().verifyIdToken(idToken);
-                req.session.userId = decodedToken.uid;
-              } catch (error) {
-                return done(
-                  new Error("User must be logged in to connect Instagram"),
-                  null
-                );
-              }
-            } else {
-              return done(
-                new Error("User must be logged in to connect Instagram"),
-                null
-              );
-            }
-          }
-
-          return done(null, {
-            id: profile.id,
-            username: profile.username,
-            displayName: profile.displayName,
-            photos: profile.photos,
-            accessToken,
-            refreshToken,
-          });
-        } catch (error) {
-          console.error("Instagram Strategy Error:", error);
-          return done(error, null);
-        }
-      }
-    )
-  );
-}
 
 module.exports = passport;

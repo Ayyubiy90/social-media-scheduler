@@ -28,12 +28,14 @@ export const socialAuthProviders: Record<string, SocialAuthProvider> = {
     redirectUri: `${BASE_URL}/social/facebook/callback`,
     display: "popup",
     responseType: "code",
+    authUrl: `${BASE_URL}/social/facebook/connect`,
   },
   linkedin: {
     name: "LinkedIn",
     scopes: ["r_emailaddress", "r_liteprofile", "w_member_social"],
     redirectUri: `${BASE_URL}/social/linkedin/callback`,
     responseType: "code",
+    authUrl: `${BASE_URL}/social/linkedin/connect`,
   },
   instagram: {
     name: "Instagram",
@@ -47,12 +49,7 @@ export const socialAuthProviders: Record<string, SocialAuthProvider> = {
 // Store generated states in memory for validation
 const stateStore = new Set<string>();
 
-export const getAuthUrl = (platform: string): string => {
-  // For Twitter, we'll use the direct OAuth endpoint since it's handled by passport
-  if (platform === "twitter") {
-    return `${BASE_URL}/social/twitter/connect`;
-  }
-
+export const getAuthUrl = (platform: string, token?: string): string => {
   const provider = socialAuthProviders[platform];
   if (!provider) {
     throw new Error(`Unknown platform: ${platform}`);
@@ -61,7 +58,17 @@ export const getAuthUrl = (platform: string): string => {
   const state = generateState();
   stateStore.add(state);
 
-  return `${BASE_URL}/social/${platform}/connect`;
+  // Use provider's authUrl if available, otherwise construct default URL
+  const baseUrl = provider.authUrl || `${BASE_URL}/social/${platform}/connect`;
+  
+  // Add token to URL if provided
+  const url = new URL(baseUrl);
+  if (token) {
+    url.searchParams.set('token', token);
+  }
+  url.searchParams.set('state', state);
+
+  return url.toString();
 };
 
 const generateState = (): string => {

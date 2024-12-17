@@ -50,6 +50,7 @@ const getAuthHeaders = async () => {
       // Get fresh token
       const token = await user.getIdToken(true);
       localStorage.setItem("token", token);
+      localStorage.setItem("userId", user.uid); // Store user ID for debugging
       return {
         headers: {
           Authorization: `Bearer ${token}`
@@ -93,6 +94,10 @@ export const socialMediaService = {
   // Connect account
   async connectAccount(platform: string): Promise<void> {
     try {
+      console.log(`[${platform}] Starting connection process...`);
+      console.log(`[${platform}] Current user ID:`, localStorage.getItem("userId"));
+      console.log(`[${platform}] Current token:`, localStorage.getItem("token"));
+
       // For Twitter, use a direct redirect in the same window
       if (platform === "twitter") {
         const currentUrl = window.location.href;
@@ -111,14 +116,28 @@ export const socialMediaService = {
         return;
       }
 
-      // For other platforms, use popup
+      // For other platforms, use popup with token
+      const headers = await getAuthHeaders();
+      const token = headers.headers.Authorization.split(" ")[1];
+      
+      console.log(`[${platform}] Got auth token:`, token);
+
       const width = 600;
       const height = 600;
       const left = window.screen.width / 2 - width / 2;
       const top = window.screen.height / 2 - height / 2;
 
+      // Store token for OAuth flow
+      localStorage.setItem("token", token);
+
+      // Get auth URL from provider configuration
+      const { getAuthUrl } = await import("../config/socialAuthProviders");
+      const authUrl = getAuthUrl(platform, token);
+      
+      console.log(`[${platform}] Opening popup with URL:`, authUrl);
+
       const popup = window.open(
-        `${API_URL}/social/${platform}/connect`,
+        authUrl,
         `Connect ${platform}`,
         `width=${width},height=${height},left=${left},top=${top}`
       );
@@ -128,57 +147,97 @@ export const socialMediaService = {
       }
 
       return new Promise((resolve, reject) => {
-        const checkPopup = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(checkPopup);
-            // Verify connection status
+        let popupClosed = false;
+        let messageHandler: ((event: MessageEvent) => void) | null = null;
+        let checkInterval: NodeJS.Timeout | null = null;
+        let timeoutId: NodeJS.Timeout | null = null;
+
+        const cleanup = () => {
+          if (messageHandler) {
+            window.removeEventListener("message", messageHandler);
+          }
+          if (checkInterval) {
+            clearInterval(checkInterval);
+          }
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+          if (popup && !popup.closed) {
+            popup.close();
+          }
+        };
+
+        // Listen for messages from the popup
+        messageHandler = (event: MessageEvent) => {
+          console.log(`[${platform}] Received message:`, event.origin, event.data);
+
+          if (event.origin !== API_URL) {
+            console.log(`[${platform}] Ignoring message from unknown origin:`, event.origin);
+            return;
+          }
+
+          try {
+            const data = JSON.parse(event.data);
+            console.log(`[${platform}] Parsed message data:`, data);
+
+            if (data.type === "oauth_callback") {
+              cleanup();
+              popupClosed = true;
+
+              if (data.status === "success") {
+                console.log(`[${platform}] OAuth successful`);
+                resolve();
+              } else {
+                console.error(`[${platform}] OAuth failed:`, data.error);
+                reject(new Error(data.error || `Failed to connect ${platform}`));
+              }
+            }
+          } catch (err) {
+            console.error(`[${platform}] Error processing OAuth callback:`, err);
+          }
+        };
+
+        window.addEventListener("message", messageHandler);
+
+        // Check if popup is closed
+        checkInterval = setInterval(() => {
+          if (!popup || popup.closed) {
+            console.log(`[${platform}] Popup closed, verifying connection status`);
+            cleanup();
+            popupClosed = true;
+
+            // Verify connection status after popup closes
             this.getConnectedAccounts()
               .then((accounts) => {
                 const isConnected = accounts.some(
                   (acc) => acc.platform === platform && acc.connected
                 );
                 if (isConnected) {
+                  console.log(`[${platform}] Connection verified`);
                   resolve();
                 } else {
+                  console.error(`[${platform}] Connection verification failed`);
                   reject(new Error(`Failed to connect ${platform}`));
                 }
               })
-              .catch(reject);
+              .catch((error) => {
+                console.error(`[${platform}] Error verifying connection:`, error);
+                reject(error);
+              });
           }
         }, 500);
 
-        // Handle OAuth callback through window message
-        const handleMessage = (event: MessageEvent) => {
-          if (event.origin !== API_URL) return;
-
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === "oauth_callback") {
-              window.removeEventListener("message", handleMessage);
-              if (data.error) {
-                reject(new Error(data.error));
-              } else {
-                resolve();
-              }
-              popup.close();
-            }
-          } catch (error) {
-            console.error("Error handling OAuth callback:", error);
+        // Timeout after 2 minutes
+        timeoutId = setTimeout(() => {
+          if (!popupClosed) {
+            console.error(`[${platform}] Connection timeout`);
+            cleanup();
+            reject(new Error("Connection timeout"));
           }
-        };
-
-        window.addEventListener("message", handleMessage);
-
-        // Timeout after 5 minutes
-        setTimeout(() => {
-          window.removeEventListener("message", handleMessage);
-          clearInterval(checkPopup);
-          popup.close();
-          reject(new Error("Connection timeout"));
-        }, 5 * 60 * 1000);
+        }, 2 * 60 * 1000);
       });
     } catch (error) {
-      console.error(`Error connecting to ${platform}:`, error);
+      console.error(`[${platform}] Error connecting:`, error);
       throw error;
     }
   },
