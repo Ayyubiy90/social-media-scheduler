@@ -6,8 +6,13 @@ const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const passport = require("passport");
 require("./src/middleware/oauthMiddleware.cjs");
-const { verifyToken, verifySession } = require("./src/middleware/authMiddleware.cjs");
-const { validatePostMiddleware } = require("./src/middleware/postValidation.cjs");
+const {
+  verifyToken,
+  verifySession,
+} = require("./src/middleware/authMiddleware.cjs");
+const {
+  validatePostMiddleware,
+} = require("./src/middleware/postValidation.cjs");
 const {
   createPostJob,
   cancelPostJob,
@@ -18,13 +23,16 @@ const app = express();
 const port = 5000;
 
 // Debug log to check environment variables
-console.log("Environment check - Session Secret exists:", !!process.env.SESSION_SECRET);
+console.log(
+  "Environment check - Session Secret exists:",
+  !!process.env.SESSION_SECRET
+);
 console.log("Environment check - OAuth credentials exist:", {
   twitter: {
     apiKeyExists: !!process.env.TWITTER_API_KEY,
     apiSecretExists: !!process.env.TWITTER_API_SECRET,
-    callbackUrlExists: !!process.env.TWITTER_CALLBACK_URL
-  }
+    callbackUrlExists: !!process.env.TWITTER_CALLBACK_URL,
+  },
 });
 
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
@@ -37,14 +45,14 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
   exposedHeaders: ["Set-Cookie"],
   preflightContinue: true,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
 // Trust first proxy for secure cookies
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 // Cookie parser middleware
 app.use(cookieParser(process.env.SESSION_SECRET));
@@ -61,12 +69,12 @@ app.use(
     saveUninitialized: false,
     store: new session.MemoryStore(),
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       sameSite: "none",
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       path: "/",
-      domain: process.env.COOKIE_DOMAIN || 'localhost'
+      domain: process.env.COOKIE_DOMAIN || "localhost",
     },
     name: "social-scheduler.sid",
     rolling: true,
@@ -77,11 +85,13 @@ app.use(
 app.use((req, res, next) => {
   // Get token from Authorization header
   const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.startsWith('Bearer ') 
-    ? authHeader.split('Bearer ')[1] 
-    : null;
+  const token =
+    authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.split("Bearer ")[1]
+      : null;
 
-  console.log('Request Debug:', {
+  // Enhanced debug logging
+  console.log("Request Debug:", {
     url: req.url,
     sessionId: req.sessionID,
     hasSession: !!req.session,
@@ -97,9 +107,31 @@ app.use((req, res, next) => {
       origin: req.headers.origin,
       referer: req.headers.referer,
       cookie: req.headers.cookie,
-      authorization: req.headers.authorization
-    }
+      authorization: req.headers.authorization,
+    },
+    query: req.query,
+    body: req.body,
+    params: req.params,
+    session: {
+      ...req.session,
+      cookie: req.session?.cookie,
+      passport: req.session?.passport,
+    },
   });
+
+  // Track OAuth specific information
+  if (req.path.includes('/social/')) {
+    console.log('OAuth Debug:', {
+      platform: req.path.split('/')[2], // Extract platform from path
+      state: req.query.state,
+      code: req.query.code,
+      error: req.query.error,
+      errorDescription: req.query.error_description,
+      isCallback: req.path.includes('callback'),
+      sessionState: req.session,
+    });
+  }
+
   next();
 });
 

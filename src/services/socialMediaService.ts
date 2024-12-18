@@ -25,49 +25,33 @@ interface PlatformLimits {
   };
 }
 
-interface PostValidation {
-  valid: boolean;
-  errors?: string[];
-}
-
-interface PostPreview {
-  preview: string;
-}
-
-interface ApiError {
-  error: string;
-}
-
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const getAuthHeaders = async () => {
   try {
-    // Try to get current Firebase user
     const auth = getAuth();
     const user = auth.currentUser;
-    
+
     if (user) {
-      // Get fresh token
       const token = await user.getIdToken(true);
       localStorage.setItem("token", token);
-      localStorage.setItem("userId", user.uid); // Store user ID for debugging
+      localStorage.setItem("userId", user.uid);
       return {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       };
     }
-    
-    // If no user, try to get token from localStorage
+
     const token = localStorage.getItem("token");
     if (!token) {
       throw new Error("Authentication token not found");
     }
-    
+
     return {
       headers: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     };
   } catch (error) {
     console.error("Error getting auth headers:", error);
@@ -76,7 +60,6 @@ const getAuthHeaders = async () => {
 };
 
 export const socialMediaService = {
-  // Get connected accounts
   async getConnectedAccounts(): Promise<SocialMediaAccount[]> {
     try {
       const headers = await getAuthHeaders();
@@ -91,55 +74,46 @@ export const socialMediaService = {
     }
   },
 
-  // Connect account
   async connectAccount(platform: string): Promise<void> {
     try {
       console.log(`[${platform}] Starting connection process...`);
-      console.log(`[${platform}] Current user ID:`, localStorage.getItem("userId"));
-      console.log(`[${platform}] Current token:`, localStorage.getItem("token"));
+      const headers = await getAuthHeaders();
+      const token = headers.headers.Authorization.split(" ")[1];
+
+      if (!token) {
+        throw new Error("No valid authentication provided");
+      }
 
       // For Twitter, use a direct redirect in the same window
       if (platform === "twitter") {
         const currentUrl = window.location.href;
         localStorage.setItem("returnUrl", currentUrl);
         localStorage.setItem("twitterConnecting", "true");
-        
-        // Get fresh token before redirect
-        const headers = await getAuthHeaders();
-        const token = headers.headers.Authorization.split(" ")[1];
-        
-        // Store token for OAuth flow
-        localStorage.setItem("token", token);
-        
-        // Redirect to Twitter connect endpoint with token in query
         window.location.href = `${API_URL}/social/twitter/connect?token=${token}`;
         return;
       }
 
       // For other platforms, use popup with token
-      const headers = await getAuthHeaders();
-      const token = headers.headers.Authorization.split(" ")[1];
-      
-      console.log(`[${platform}] Got auth token:`, token);
-
       const width = 600;
-      const height = 600;
+      const height = 800;  // Increased height for better visibility
       const left = window.screen.width / 2 - width / 2;
       const top = window.screen.height / 2 - height / 2;
 
       // Store token for OAuth flow
       localStorage.setItem("token", token);
+      localStorage.setItem(`${platform}Connecting`, "true");
 
       // Get auth URL from provider configuration
       const { getAuthUrl } = await import("../config/socialAuthProviders");
       const authUrl = getAuthUrl(platform, token);
-      
+
       console.log(`[${platform}] Opening popup with URL:`, authUrl);
 
+      // Create a centered popup window
       const popup = window.open(
         authUrl,
         `Connect ${platform}`,
-        `width=${width},height=${height},left=${left},top=${top}`
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
       );
 
       if (!popup) {
@@ -165,37 +139,54 @@ export const socialMediaService = {
           if (popup && !popup.closed) {
             popup.close();
           }
+          // Clean up platform-specific connection state
+          localStorage.removeItem(`${platform}Connecting`);
         };
 
-        // Listen for messages from the popup
-        messageHandler = (event: MessageEvent) => {
-          console.log(`[${platform}] Received message:`, event.origin, event.data);
+      // Listen for messages from the popup
+      messageHandler = (event: MessageEvent) => {
+        console.log(`[${platform}] Received event from origin:`, event.origin, 'Expected:', API_URL);
+        console.log(`[${platform}] Event data:`, event.data);
 
-          if (event.origin !== API_URL) {
-            console.log(`[${platform}] Ignoring message from unknown origin:`, event.origin);
-            return;
+        if (event.origin !== API_URL) {
+          console.log(`[${platform}] Ignoring message from unknown origin:`, event.origin);
+          return;
+        }
+
+        try {
+          let data;
+          if (typeof event.data === 'string') {
+            data = JSON.parse(event.data);
+          } else {
+            data = event.data;
           }
+          
+          console.log(`[${platform}] Parsed message data:`, data);
 
-          try {
-            const data = JSON.parse(event.data);
-            console.log(`[${platform}] Parsed message data:`, data);
+          if (data.type === "oauth_callback") {
+            cleanup();
+            popupClosed = true;
 
-            if (data.type === "oauth_callback") {
-              cleanup();
-              popupClosed = true;
-
-              if (data.status === "success") {
-                console.log(`[${platform}] OAuth successful`);
-                resolve();
-              } else {
-                console.error(`[${platform}] OAuth failed:`, data.error);
-                reject(new Error(data.error || `Failed to connect ${platform}`));
-              }
+            if (data.status === "success") {
+              console.log(`[${platform}] OAuth successful`);
+              resolve();
+            } else {
+              console.error(`[${platform}] OAuth failed:`, data.error);
+              reject(new Error(data.error || `Failed to connect ${platform}`));
             }
-          } catch (err) {
-            console.error(`[${platform}] Error processing OAuth callback:`, err);
           }
+        } catch (err) {
+          console.error(`[${platform}] Error processing OAuth callback:`, err);
+          console.error(`[${platform}] Raw event data:`, event.data);
+        }
+      };
+
+      // Add error event listener to popup
+      if (popup) {
+        popup.onerror = (error) => {
+          console.error(`[${platform}] Popup error:`, error);
         };
+      }
 
         window.addEventListener("message", messageHandler);
 
@@ -214,10 +205,12 @@ export const socialMediaService = {
                 );
                 if (isConnected) {
                   console.log(`[${platform}] Connection verified`);
+                  localStorage.removeItem(`${platform}Connecting`);
                   resolve();
                 } else {
                   console.error(`[${platform}] Connection verification failed`);
-                  reject(new Error(`Failed to connect ${platform}`));
+                  localStorage.removeItem(`${platform}Connecting`);
+                  reject(new Error(`Failed to connect ${platform}. Please check your app permissions and try again.`));
                 }
               })
               .catch((error) => {
@@ -274,7 +267,7 @@ export const socialMediaService = {
       );
       return response.data;
     } catch (error) {
-      const err = error as { response?: { data?: ApiError } };
+      const err = error as { response?: { data?: { error: string } } };
       if (err.response?.data?.error) {
         throw new Error(err.response.data.error);
       }
@@ -286,7 +279,7 @@ export const socialMediaService = {
   async getPostPreview(platform: string, content: string): Promise<string> {
     try {
       const headers = await getAuthHeaders();
-      const response = await axiosInstance.post<PostPreview>(
+      const response = await axiosInstance.post<{ preview: string }>(
         `${API_URL}/social/${platform}/preview`,
         { content },
         headers
@@ -303,10 +296,10 @@ export const socialMediaService = {
     platform: string,
     content: string,
     mediaUrls?: string[]
-  ): Promise<PostValidation> {
+  ): Promise<{ valid: boolean; errors?: string[] }> {
     try {
       const headers = await getAuthHeaders();
-      const response = await axiosInstance.post<PostValidation>(
+      const response = await axiosInstance.post<{ valid: boolean; errors?: string[] }>(
         `${API_URL}/social/${platform}/validate`,
         {
           content,

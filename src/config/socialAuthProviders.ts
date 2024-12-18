@@ -24,18 +24,18 @@ export const socialAuthProviders: Record<string, SocialAuthProvider> = {
       "pages_show_list",
       "pages_read_engagement",
       "pages_manage_posts",
+      "pages_manage_metadata",
+      "business_management"
     ],
     redirectUri: `${BASE_URL}/social/facebook/callback`,
     display: "popup",
     responseType: "code",
-    authUrl: `${BASE_URL}/social/facebook/connect`,
   },
   linkedin: {
     name: "LinkedIn",
-    scopes: ["r_emailaddress", "r_liteprofile", "w_member_social"],
+    scopes: ["r_liteprofile", "r_emailaddress", "w_member_social", "w_organization_social"],
     redirectUri: `${BASE_URL}/social/linkedin/callback`,
     responseType: "code",
-    authUrl: `${BASE_URL}/social/linkedin/connect`,
   },
   instagram: {
     name: "Instagram",
@@ -58,16 +58,41 @@ export const getAuthUrl = (platform: string, token?: string): string => {
   const state = generateState();
   stateStore.add(state);
 
-  // Use provider's authUrl if available, otherwise construct default URL
-  const baseUrl = provider.authUrl || `${BASE_URL}/social/${platform}/connect`;
-  
-  // Add token to URL if provided
+  // Construct OAuth URL based on platform
+  let baseUrl;
+  if (platform === 'facebook') {
+    baseUrl = 'https://www.facebook.com/v16.0/dialog/oauth';
+  } else if (platform === 'linkedin') {
+    baseUrl = 'https://www.linkedin.com/oauth/v2/authorization';
+  } else {
+    baseUrl = `${BASE_URL}/social/${platform}/connect`;
+  }
+
   const url = new URL(baseUrl);
+  
+  // Add common OAuth parameters
+  if (platform === 'facebook' || platform === 'linkedin') {
+    url.searchParams.set('client_id', platform === 'facebook' ? 
+      import.meta.env.VITE_FACEBOOK_APP_ID : 
+      import.meta.env.VITE_LINKEDIN_CLIENT_ID
+    );
+    url.searchParams.set('redirect_uri', provider.redirectUri);
+    url.searchParams.set('response_type', provider.responseType || 'code');
+    url.searchParams.set('scope', provider.scopes.join(' '));
+  }
+
+  // Add token and state
   if (token) {
     url.searchParams.set('token', token);
   }
   url.searchParams.set('state', state);
 
+  // Platform specific parameters
+  if (platform === 'facebook') {
+    url.searchParams.set('display', 'popup');
+  }
+
+  console.log(`[${platform}] Generated OAuth URL:`, url.toString());
   return url.toString();
 };
 

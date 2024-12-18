@@ -16,7 +16,7 @@ const verifyToken = async (req, res, next) => {
       try {
         // Verify the ID token
         const decodedToken = await admin.auth().verifyIdToken(token);
-        
+
         // Check token expiration
         if (decodedToken.exp && decodedToken.exp < Date.now() / 1000) {
           return res.status(401).json({ error: "Token has expired" });
@@ -26,7 +26,7 @@ const verifyToken = async (req, res, next) => {
         req.user = {
           uid: decodedToken.uid,
           email: decodedToken.email,
-          token: token // Store the token for later use
+          token: token, // Store the token for later use
         };
 
         // Store user ID in session if it doesn't exist
@@ -58,7 +58,7 @@ const verifyToken = async (req, res, next) => {
         const userRecord = await admin.auth().getUser(req.session.userId);
         req.user = {
           uid: userRecord.uid,
-          email: userRecord.email
+          email: userRecord.email,
         };
         return next();
       } catch (error) {
@@ -77,7 +77,7 @@ const verifyToken = async (req, res, next) => {
 const verifySession = async (req, res, next) => {
   try {
     // For OAuth callbacks, skip verification
-    if (req.path.includes('/callback')) {
+    if (req.path.includes("/callback")) {
       return next();
     }
 
@@ -93,11 +93,13 @@ const verifySession = async (req, res, next) => {
     // Check for Firebase token in session (for OAuth flows)
     if (req.session?.firebaseToken) {
       try {
-        const decodedToken = await admin.auth().verifyIdToken(req.session.firebaseToken);
+        const decodedToken = await admin
+          .auth()
+          .verifyIdToken(req.session.firebaseToken);
         req.user = {
           uid: decodedToken.uid,
           email: decodedToken.email,
-          token: req.session.firebaseToken
+          token: req.session.firebaseToken,
         };
         return next();
       } catch (error) {
@@ -111,7 +113,7 @@ const verifySession = async (req, res, next) => {
         const userRecord = await admin.auth().getUser(req.session.userId);
         req.user = {
           uid: userRecord.uid,
-          email: userRecord.email
+          email: userRecord.email,
         };
         return next();
       } catch (error) {

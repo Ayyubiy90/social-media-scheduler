@@ -18,10 +18,23 @@ const initOAuthConnect = (platform) => async (req, res, next) => {
   req.session.returnTo = `${CLIENT_URL}/settings`;
 
   debugLog(`${platform} Connect Debug`, {
+    firebaseToken: req.session?.firebaseToken || "not set",
+    authHeader: req.headers.authorization || "not provided",
     sessionId: req.sessionID,
     hasSession: !!req.session,
     user: req.user,
     uid: req.user?.uid,
+    token: req.session?.firebaseToken ? "exists" : "missing",
+    query: req.query,
+    cookies: req.cookies,
+    headers: req.headers,
+  });
+
+  // Log OAuth configuration
+  debugLog(`${platform} OAuth Config`, {
+    clientId: platform === 'facebook' ? process.env.FACEBOOK_APP_ID : process.env.LINKEDIN_CLIENT_ID,
+    clientSecret: 'exists: ' + !!(platform === 'facebook' ? process.env.FACEBOOK_APP_SECRET : process.env.LINKEDIN_CLIENT_SECRET),
+    callbackUrl: platform === 'facebook' ? process.env.FACEBOOK_CALLBACK_URL : process.env.LINKEDIN_CALLBACK_URL,
   });
 
   // Store the Firebase token in session for the callback
@@ -39,37 +52,48 @@ const initOAuthConnect = (platform) => async (req, res, next) => {
   // Store platform in session for callback
   req.session.platform = platform.toLowerCase();
 
-  req.session.save((err) => {
-    if (err) {
-      console.error("Session save error:", err);
-      return res.redirect(
-        `${CLIENT_URL}/settings?error=Failed to save session`
-      );
-    }
-    debugLog("Session saved successfully", `proceeding with ${platform} auth`);
+  // Save session before proceeding
+  await new Promise((resolve, reject) => {
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        reject(err);
+      } else {
+        debugLog("Session saved successfully", {
+          sessionId: req.sessionID,
+          userId: req.session.userId,
+          platform: req.session.platform,
+          hasToken: !!req.session.firebaseToken,
+        });
+        resolve();
+      }
+    });
+  });
+
   const authOptions = {
     failureRedirect: `${CLIENT_URL}/settings?error=${platform} authentication failed`,
     session: true,
-    state: req.query.state || true
+    state: req.query.state || true,
   };
 
-    // Platform-specific configurations
-    switch (platform.toLowerCase()) {
-      case 'facebook':
-        authOptions.scope = ['email', 'public_profile'];
-        break;
-      case 'linkedin':
-        authOptions.scope = ['r_emailaddress', 'r_liteprofile'];
-        break;
-      case 'twitter':
-        // Twitter-specific options if needed
-        break;
-      case 'instagram':
-        // Instagram-specific options if needed
-        break;
+  // Use scopes defined in oauthMiddleware.cjs
+  passport.authenticate(platform.toLowerCase(), {
+    ...authOptions,
+    failureRedirect: `${CLIENT_URL}/settings?error=${encodeURIComponent(`${platform} authentication failed. Please check your app permissions.`)}`,
+    failWithError: true,
+  })(req, res, async (err, user) => {
+    if (err) {
+      console.error(`${platform} authentication error:`, err);
+      console.error(`[${platform}] Authentication failed. Check the app settings and permissions.`);
+      console.error(`[${platform}] Error details:`, {
+        message: err.message,
+        stack: err.stack,
+        code: err.code,
+        statusCode: err.statusCode,
+      });
+      return res.redirect(`${CLIENT_URL}/settings?error=${encodeURIComponent(err.message || `Failed to connect ${platform}`)}`);
     }
-
-    passport.authenticate(platform.toLowerCase(), authOptions)(req, res, next);
+    next();
   });
 };
 
@@ -104,30 +128,71 @@ const handleOAuthCallback = (platform) => async (req, res, next) => {
   const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
   debugLog(`${platform} Callback Debug`, {
+    firebaseToken: req.session?.firebaseToken || "not set",
+    authHeader: req.headers.authorization || "not provided",
     sessionId: req.sessionID,
     hasSession: !!req.session,
     userId: req.session?.userId,
+    token: req.session?.firebaseToken ? "exists" : "missing",
     query: req.query,
     platform: platform,
+    cookies: req.cookies,
+    headers: req.headers,
+    error: req.query.error,
+    errorDescription: req.query.error_description,
+  });
+
+  // Log OAuth state
+  debugLog(`${platform} OAuth State`, {
+    state: req.query.state,
+    code: req.query.code,
+    sessionState: req.session?.state,
+    isStateValid: req.query.state === req.session?.state,
   });
 
   passport.authenticate(
     platform.toLowerCase(),
-    { session: false },
+    { 
+      session: true,
+      failureRedirect: `${CLIENT_URL}/settings?error=${encodeURIComponent(`${platform} authentication failed`)}`,
+      failWithError: true,
+      state: true
+    },
     async (err, user) => {
       if (err) {
         console.error(`${platform} auth error:`, err);
-        // Send error message via postMessage and close
+        console.error(`${platform} auth error details:`, {
+          message: err.message,
+          code: err.code,
+          statusCode: err.statusCode,
+          state: req.query.state,
+          error: req.query.error,
+          errorDescription: req.query.error_description
+        });
+
+        // Prepare error details
+        const errorDetails = {
+          code: err.code,
+          statusCode: err.statusCode,
+          state: req.query.state,
+          error: req.query.error,
+          errorDescription: req.query.error_description
+        };
+
+        // Send detailed error message via postMessage and close
+        const message = {
+          type: 'oauth_callback',
+          status: 'error',
+          error: err.message || `Failed to connect ${platform}. Please check your app permissions and try again.`,
+          details: errorDetails
+        };
+
         const html = `
           <!DOCTYPE html>
           <html>
             <body>
               <script>
-                window.opener.postMessage(JSON.stringify({
-                  type: 'oauth_callback',
-                  status: 'error',
-                  error: ${JSON.stringify(err.message)}
-                }), '${CLIENT_URL}');
+                window.opener.postMessage(${JSON.stringify(JSON.stringify(message))}, '${CLIENT_URL}');
                 window.close();
               </script>
             </body>
@@ -163,7 +228,19 @@ const handleOAuthCallback = (platform) => async (req, res, next) => {
         displayName: user.displayName,
       });
 
-      const userId = req.session?.userId;
+      // Get userId from session or verify token
+      let userId = req.session?.userId;
+      if (!userId && req.session?.firebaseToken) {
+        try {
+          const decodedToken = await admin
+            .auth()
+            .verifyIdToken(req.session.firebaseToken);
+          userId = decodedToken.uid;
+        } catch (error) {
+          console.error("Token verification error:", error);
+        }
+      }
+
       if (!userId) {
         console.error(`${platform} auth failed: No user ID in session`);
         // Send error message via postMessage and close
