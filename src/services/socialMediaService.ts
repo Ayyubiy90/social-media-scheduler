@@ -63,16 +63,18 @@ export const socialMediaService = {
   async getConnectedAccounts(): Promise<SocialMediaAccount[]> {
     try {
       const headers = await getAuthHeaders();
+      console.log('Request headers:', headers); // Add this debug log
       const response = await axiosInstance.get<SocialMediaAccount[]>(
         `${API_URL}/social/connected-accounts`,
         headers
       );
+      console.log('Connected accounts response:', response.data); // Add this debug log
       return response.data;
     } catch (error) {
       console.error("Error getting connected accounts:", error);
       throw error;
     }
-  },
+  },  
 
   async connectAccount(platform: string): Promise<void> {
     try {
@@ -84,18 +86,9 @@ export const socialMediaService = {
         throw new Error("No valid authentication provided");
       }
 
-      // For Twitter, use a direct redirect in the same window
-      if (platform === "twitter") {
-        const currentUrl = window.location.href;
-        localStorage.setItem("returnUrl", currentUrl);
-        localStorage.setItem("twitterConnecting", "true");
-        window.location.href = `${API_URL}/social/twitter/connect?token=${token}`;
-        return;
-      }
-
-      // For other platforms, use popup with token
+      // Use popup with token for all platforms
       const width = 600;
-      const height = 800;  // Increased height for better visibility
+      const height = 800; // Increased height for better visibility
       const left = window.screen.width / 2 - width / 2;
       const top = window.screen.height / 2 - height / 2;
 
@@ -143,57 +136,72 @@ export const socialMediaService = {
           localStorage.removeItem(`${platform}Connecting`);
         };
 
-      // Listen for messages from the popup
-      messageHandler = (event: MessageEvent) => {
-        console.log(`[${platform}] Received event from origin:`, event.origin, 'Expected:', API_URL);
-        console.log(`[${platform}] Event data:`, event.data);
+        // Listen for messages from the popup
+        messageHandler = (event: MessageEvent) => {
+          console.log(
+            `[${platform}] Received event from origin:`,
+            event.origin,
+            "Expected:",
+            API_URL
+          );
+          console.log(`[${platform}] Event data:`, event.data);
 
-        if (event.origin !== API_URL) {
-          console.log(`[${platform}] Ignoring message from unknown origin:`, event.origin);
-          return;
-        }
-
-        try {
-          let data;
-          if (typeof event.data === 'string') {
-            data = JSON.parse(event.data);
-          } else {
-            data = event.data;
+          if (event.origin !== API_URL) {
+            console.log(
+              `[${platform}] Ignoring message from unknown origin:`,
+              event.origin
+            );
+            return;
           }
-          
-          console.log(`[${platform}] Parsed message data:`, data);
 
-          if (data.type === "oauth_callback") {
-            cleanup();
-            popupClosed = true;
-
-            if (data.status === "success") {
-              console.log(`[${platform}] OAuth successful`);
-              resolve();
+          try {
+            let data;
+            if (typeof event.data === "string") {
+              data = JSON.parse(event.data);
             } else {
-              console.error(`[${platform}] OAuth failed:`, data.error);
-              reject(new Error(data.error || `Failed to connect ${platform}`));
+              data = event.data;
             }
-          }
-        } catch (err) {
-          console.error(`[${platform}] Error processing OAuth callback:`, err);
-          console.error(`[${platform}] Raw event data:`, event.data);
-        }
-      };
 
-      // Add error event listener to popup
-      if (popup) {
-        popup.onerror = (error) => {
-          console.error(`[${platform}] Popup error:`, error);
+            console.log(`[${platform}] Parsed message data:`, data);
+
+            if (data.type === "oauth_callback") {
+              cleanup();
+              popupClosed = true;
+
+              if (data.status === "success") {
+                console.log(`[${platform}] OAuth successful`);
+                resolve();
+              } else {
+                console.error(`[${platform}] OAuth failed:`, data.error);
+                reject(
+                  new Error(data.error || `Failed to connect ${platform}`)
+                );
+              }
+            }
+          } catch (err) {
+            console.error(
+              `[${platform}] Error processing OAuth callback:`,
+              err
+            );
+            console.error(`[${platform}] Raw event data:`, event.data);
+          }
         };
-      }
+
+        // Add error event listener to popup
+        if (popup) {
+          popup.onerror = (error) => {
+            console.error(`[${platform}] Popup error:`, error);
+          };
+        }
 
         window.addEventListener("message", messageHandler);
 
         // Check if popup is closed
         checkInterval = setInterval(() => {
           if (!popup || popup.closed) {
-            console.log(`[${platform}] Popup closed, verifying connection status`);
+            console.log(
+              `[${platform}] Popup closed, verifying connection status`
+            );
             cleanup();
             popupClosed = true;
 
@@ -210,11 +218,18 @@ export const socialMediaService = {
                 } else {
                   console.error(`[${platform}] Connection verification failed`);
                   localStorage.removeItem(`${platform}Connecting`);
-                  reject(new Error(`Failed to connect ${platform}. Please check your app permissions and try again.`));
+                  reject(
+                    new Error(
+                      `Failed to connect ${platform}. Please check your app permissions and try again.`
+                    )
+                  );
                 }
               })
               .catch((error) => {
-                console.error(`[${platform}] Error verifying connection:`, error);
+                console.error(
+                  `[${platform}] Error verifying connection:`,
+                  error
+                );
                 reject(error);
               });
           }
@@ -299,7 +314,10 @@ export const socialMediaService = {
   ): Promise<{ valid: boolean; errors?: string[] }> {
     try {
       const headers = await getAuthHeaders();
-      const response = await axiosInstance.post<{ valid: boolean; errors?: string[] }>(
+      const response = await axiosInstance.post<{
+        valid: boolean;
+        errors?: string[];
+      }>(
         `${API_URL}/social/${platform}/validate`,
         {
           content,

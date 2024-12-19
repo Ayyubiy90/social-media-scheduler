@@ -14,7 +14,7 @@ const debugLog = (message, data) => {
 
 // OAuth routes for Twitter
 const initOAuthConnect = (platform) => async (req, res, next) => {
-  const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+  const CLIENT_URL = process.env.VITE_CLIENT_URL || "http://localhost:5173";
   req.session.returnTo = `${CLIENT_URL}/settings`;
 
   debugLog(`${platform} Connect Debug`, {
@@ -32,9 +32,9 @@ const initOAuthConnect = (platform) => async (req, res, next) => {
 
   // Log OAuth configuration
   debugLog(`${platform} OAuth Config`, {
-    clientId: platform === 'facebook' ? process.env.FACEBOOK_APP_ID : process.env.LINKEDIN_CLIENT_ID,
-    clientSecret: 'exists: ' + !!(platform === 'facebook' ? process.env.FACEBOOK_APP_SECRET : process.env.LINKEDIN_CLIENT_SECRET),
-    callbackUrl: platform === 'facebook' ? process.env.FACEBOOK_CALLBACK_URL : process.env.LINKEDIN_CALLBACK_URL,
+    clientId: platform === 'facebook' ? process.env.VITE_FACEBOOK_APP_ID : process.env.VITE_LINKEDIN_CLIENT_ID,
+    clientSecret: 'exists: ' + !!(platform === 'facebook' ? process.env.VITE_FACEBOOK_APP_SECRET : process.env.VITE_LINKEDIN_CLIENT_SECRET),
+    callbackUrl: platform === 'facebook' ? process.env.VITE_FACEBOOK_CALLBACK_URL : process.env.VITE_LINKEDIN_CALLBACK_URL,
   });
 
   // Store the Firebase token in session for the callback
@@ -125,7 +125,7 @@ router.get(
 
 // Common callback handler for all platforms
 const handleOAuthCallback = (platform) => async (req, res, next) => {
-  const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+  const CLIENT_URL = process.env.VITE_CLIENT_URL || "http://localhost:5173";
 
   debugLog(`${platform} Callback Debug`, {
     firebaseToken: req.session?.firebaseToken || "not set",
@@ -156,7 +156,7 @@ const handleOAuthCallback = (platform) => async (req, res, next) => {
       session: true,
       failureRedirect: `${CLIENT_URL}/settings?error=${encodeURIComponent(`${platform} authentication failed`)}`,
       failWithError: true,
-      state: true
+      state: false
     },
     async (err, user) => {
       if (err) {
@@ -278,8 +278,9 @@ const handleOAuthCallback = (platform) => async (req, res, next) => {
           const updateData = {
             [`${platformLower}Profile`]: {
               id: user.id,
-              username: user.username,
+              username: user.username || user.id,
               name: user.displayName,
+              email: user._json?.email,
             },
             [`${platformLower}Connected`]: true,
             [`${platformLower}ConnectedAt`]:
