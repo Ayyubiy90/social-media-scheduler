@@ -1,6 +1,7 @@
 require("dotenv").config();
 const passport = require("passport");
-const TwitterStrategy = require("passport-twitter").Strategy;
+const crypto = require("crypto");
+const TwitterStrategy = require("passport-twitter-oauth2").Strategy;
 const FacebookStrategy = require("passport-facebook").Strategy;
 const LinkedInStrategy = require("passport-linkedin-oauth2").Strategy;
 const InstagramStrategy = require("passport-instagram").Strategy;
@@ -9,51 +10,40 @@ const db = require("../../firebaseConfig.cjs");
 
 const CLIENT_URL = process.env.VITE_CLIENT_URL || "http://localhost:5173";
 
-// Debug log to check environment variables
-console.log("OAuth Configuration:", {
-  twitter: {
-    apiKeyExists: !!process.env.VITE_TWITTER_API_KEY,
-    apiSecretExists: !!process.env.VITE_TWITTER_API_SECRET,
-    callbackUrlExists: !!process.env.VITE_TWITTER_CALLBACK_URL,
-  },
-  facebook: {
-    appIdExists: !!process.env.VITE_FACEBOOK_APP_ID,
-    appSecretExists: !!process.env.VITE_FACEBOOK_APP_SECRET,
-    callbackUrlExists: !!process.env.VITE_FACEBOOK_CALLBACK_URL,
-  },
-  linkedin: {
-    clientIdExists: !!process.env.VITE_LINKEDIN_CLIENT_ID,
-    clientSecretExists: !!process.env.VITE_LINKEDIN_CLIENT_SECRET,
-    callbackUrlExists: !!process.env.VITE_LINKEDIN_CALLBACK_URL,
-  },
-});
-
 // Configure Twitter Strategy
-if (process.env.VITE_TWITTER_API_KEY && process.env.VITE_TWITTER_API_SECRET) {
+if (
+  process.env.VITE_TWITTER_CLIENT_ID &&
+  process.env.VITE_TWITTER_CLIENT_SECRET
+) {
   passport.use(
+    "twitter",
     new TwitterStrategy(
       {
-        consumerKey: process.env.VITE_TWITTER_API_KEY,
-        consumerSecret: process.env.VITE_TWITTER_API_SECRET,
+        authorizationURL: "https://twitter.com/i/oauth2/authorize",
+        tokenURL: "https://api.twitter.com/2/oauth2/token",
+        clientID: process.env.VITE_TWITTER_CLIENT_ID,
+        clientSecret: process.env.VITE_TWITTER_CLIENT_SECRET,
         callbackURL: process.env.VITE_TWITTER_CALLBACK_URL || "http://localhost:5000/social/twitter/callback",
-        includeEmail: true,
+        scope: "users.read",
         passReqToCallback: true,
-        userAuthorizationURL: "https://api.twitter.com/oauth/authorize",
-        proxy: true
+        pkce: true,
+        state: true,
+        sessionKey: "oauth2:twitter",
+        store: true,
+        userProfileURL: "https://api.twitter.com/2/users/me",
+        authorizationParams: {
+          response_type: "code",
+          code_challenge_method: "S256"
+        },
+        tokenParams: {
+          grant_type: "authorization_code",
+          client_id: process.env.VITE_TWITTER_CLIENT_ID,
+          client_secret: process.env.VITE_TWITTER_CLIENT_SECRET,
+          code_verifier: (req) => req.query.code_verifier
+        }
       },
-      async (req, token, tokenSecret, profile, done) => {
+      async (req, accessToken, refreshToken, profile, done) => {
         try {
-          console.log("Twitter Auth Response:", {
-            token,
-            tokenSecret,
-            profile: {
-              id: profile.id,
-              displayName: profile.displayName,
-              username: profile.username,
-              _json: profile._json,
-            },
-          });
-
           const userId = req.session?.userId;
           if (!userId) {
             const authHeader = req.headers.authorization;
@@ -62,26 +52,30 @@ if (process.env.VITE_TWITTER_API_KEY && process.env.VITE_TWITTER_API_SECRET) {
               try {
                 const decodedToken = await admin.auth().verifyIdToken(idToken);
                 req.session.userId = decodedToken.uid;
-                console.log("Retrieved user ID from token:", decodedToken.uid);
               } catch (error) {
-                console.error("Error verifying ID token:", error);
-                return done(new Error("User must be logged in to connect Twitter"), null);
+                return done(
+                  new Error("User must be logged in to connect Twitter"),
+                  null
+                );
               }
             } else {
-              return done(new Error("User must be logged in to connect Twitter"), null);
+              return done(
+                new Error("User must be logged in to connect Twitter"),
+                null
+              );
             }
           }
-
-          return done(null, {
+          // Extract profile data for Twitter
+          const profileData = {
             id: profile.id,
-            username: profile.username,
-            displayName: profile.displayName,
-            photos: profile.photos,
-            token,
-            tokenSecret,
-          });
+            username: profile.username || profile.id,
+            displayName: profile.displayName || profile.username,
+            photos: profile.photos || [],
+            accessToken,
+            refreshToken,
+          };
+          return done(null, profileData);
         } catch (error) {
-          console.error("Twitter Strategy Error:", error);
           return done(error, null);
         }
       }
@@ -92,32 +86,24 @@ if (process.env.VITE_TWITTER_API_KEY && process.env.VITE_TWITTER_API_SECRET) {
 // Configure Facebook Strategy
 if (process.env.VITE_FACEBOOK_APP_ID && process.env.VITE_FACEBOOK_APP_SECRET) {
   passport.use(
+    "facebook",
     new FacebookStrategy(
       {
         clientID: process.env.VITE_FACEBOOK_APP_ID,
         clientSecret: process.env.VITE_FACEBOOK_APP_SECRET,
-        callbackURL: process.env.VITE_FACEBOOK_CALLBACK_URL || "http://localhost:5000/social/facebook/callback",
-        profileFields: ["id", "displayName", "name", "email", "photos"],
+        callbackURL:
+          process.env.VITE_FACEBOOK_CALLBACK_URL ||
+          "http://localhost:5000/social/facebook/callback",
+        profileFields: ["id", "displayName", "name", "picture.type(large)"],
         passReqToCallback: true,
         enableProof: true,
-        state: false,
-        scope: ["public_profile", "email"],
+        state: true,
+        scope: ["public_profile"],
         display: "popup",
-        version: "17.0",
+        version: "v18.0",
       },
       async (req, accessToken, refreshToken, profile, done) => {
         try {
-          console.log("Facebook Auth Response:", {
-            accessToken,
-            refreshToken,
-            profile: {
-              id: profile.id,
-              displayName: profile.displayName,
-              name: profile.name,
-              _json: profile._json,
-            },
-          });
-
           const userId = req.session?.userId;
           if (!userId) {
             const authHeader = req.headers.authorization;
@@ -127,23 +113,35 @@ if (process.env.VITE_FACEBOOK_APP_ID && process.env.VITE_FACEBOOK_APP_SECRET) {
                 const decodedToken = await admin.auth().verifyIdToken(idToken);
                 req.session.userId = decodedToken.uid;
               } catch (error) {
-                return done(new Error("User must be logged in to connect Facebook"), null);
+                return done(
+                  new Error("User must be logged in to connect Facebook"),
+                  null
+                );
               }
             } else {
-              return done(new Error("User must be logged in to connect Facebook"), null);
+              return done(
+                new Error("User must be logged in to connect Facebook"),
+                null
+              );
             }
           }
-
-          return done(null, {
+          // Extract profile data
+          const profileData = {
             id: profile.id,
-            displayName: profile.displayName,
-            photos: profile.photos,
+            displayName: profile.displayName || profile.name?.givenName,
+            photos: profile.photos || (profile.picture ? [{ value: profile.picture.data.url }] : []),
             accessToken,
             refreshToken,
             _json: profile._json,
-          });
+          };
+          
+          // Ensure we have a username for the profile URL
+          if (!profileData.username) {
+            profileData.username = profile.id;
+          }
+          
+          return done(null, profileData);
         } catch (error) {
-          console.error("Facebook Strategy Error:", error);
           return done(error, null);
         }
       }
@@ -152,30 +150,28 @@ if (process.env.VITE_FACEBOOK_APP_ID && process.env.VITE_FACEBOOK_APP_SECRET) {
 }
 
 // Configure LinkedIn Strategy
-if (process.env.VITE_LINKEDIN_CLIENT_ID && process.env.VITE_LINKEDIN_CLIENT_SECRET) {
+if (
+  process.env.VITE_LINKEDIN_CLIENT_ID &&
+  process.env.VITE_LINKEDIN_CLIENT_SECRET
+) {
   passport.use(
+    "linkedin",
     new LinkedInStrategy(
       {
         clientID: process.env.VITE_LINKEDIN_CLIENT_ID,
         clientSecret: process.env.VITE_LINKEDIN_CLIENT_SECRET,
-        callbackURL: process.env.VITE_LINKEDIN_CALLBACK_URL || "http://localhost:5000/social/linkedin/callback",
+        callbackURL:
+          process.env.VITE_LINKEDIN_CALLBACK_URL ||
+          "http://localhost:5000/social/linkedin/callback",
+        scope: ["r_liteprofile"],
         passReqToCallback: true,
-        scope: ["r_liteprofile", "r_emailaddress", "w_member_social"],
         state: true,
-        proxy: true
+        authorizationParams: {
+          response_type: "code"
+        }
       },
       async (req, accessToken, refreshToken, profile, done) => {
         try {
-          console.log("LinkedIn Auth Response:", {
-            accessToken,
-            refreshToken,
-            profile: {
-              id: profile.id,
-              displayName: profile.displayName,
-              _json: profile._json,
-            },
-          });
-
           const userId = req.session?.userId;
           if (!userId) {
             const authHeader = req.headers.authorization;
@@ -185,22 +181,29 @@ if (process.env.VITE_LINKEDIN_CLIENT_ID && process.env.VITE_LINKEDIN_CLIENT_SECR
                 const decodedToken = await admin.auth().verifyIdToken(idToken);
                 req.session.userId = decodedToken.uid;
               } catch (error) {
-                return done(new Error("User must be logged in to connect LinkedIn"), null);
+                return done(
+                  new Error("User must be logged in to connect LinkedIn"),
+                  null
+                );
               }
             } else {
-              return done(new Error("User must be logged in to connect LinkedIn"), null);
+              return done(
+                new Error("User must be logged in to connect LinkedIn"),
+                null
+              );
             }
           }
-
-          return done(null, {
+          // Extract profile data for LinkedIn
+          const profileData = {
             id: profile.id,
-            displayName: profile.displayName,
-            photos: profile.photos,
+            username: profile.id,
+            displayName: profile.displayName || profile.formattedName,
+            photos: profile.photos || [],
             accessToken,
             refreshToken,
-          });
+          };
+          return done(null, profileData);
         } catch (error) {
-          console.error("LinkedIn Strategy Error:", error);
           return done(error, null);
         }
       }
@@ -210,22 +213,18 @@ if (process.env.VITE_LINKEDIN_CLIENT_ID && process.env.VITE_LINKEDIN_CLIENT_SECR
 
 // Serialize user for the session
 passport.serializeUser((user, done) => {
-  console.log("Serializing user:", user.id);
   done(null, user.id);
 });
 
 // Deserialize user from the session
 passport.deserializeUser(async (id, done) => {
   try {
-    console.log("Deserializing user:", id);
     const userRef = await db.collection("users").doc(id).get();
     if (!userRef.exists) {
-      console.error("User not found during deserialization:", id);
       return done(new Error("User not found"), null);
     }
     done(null, { id, ...userRef.data() });
   } catch (error) {
-    console.error("Deserialize User Error:", error);
     done(error, null);
   }
 });

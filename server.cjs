@@ -4,8 +4,7 @@ const cors = require("cors");
 const admin = require("firebase-admin");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
-const passport = require("passport");
-require("./src/middleware/oauthMiddleware.cjs");
+const passport = require("./src/middleware/oauthMiddleware.cjs");
 const {
   verifyToken,
   verifySession,
@@ -95,7 +94,7 @@ app.use((req, res, next) => {
     headers: {
       authorization: req.headers.authorization ? "exists" : "missing",
       cookie: req.headers.cookie,
-    }
+    },
   });
 
   next();

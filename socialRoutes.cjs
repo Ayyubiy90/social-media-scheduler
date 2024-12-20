@@ -30,13 +30,6 @@ const initOAuthConnect = (platform) => async (req, res, next) => {
     headers: req.headers,
   });
 
-  // Log OAuth configuration
-  debugLog(`${platform} OAuth Config`, {
-    clientId: platform === 'facebook' ? process.env.VITE_FACEBOOK_APP_ID : process.env.VITE_LINKEDIN_CLIENT_ID,
-    clientSecret: 'exists: ' + !!(platform === 'facebook' ? process.env.VITE_FACEBOOK_APP_SECRET : process.env.VITE_LINKEDIN_CLIENT_SECRET),
-    callbackUrl: platform === 'facebook' ? process.env.VITE_FACEBOOK_CALLBACK_URL : process.env.VITE_LINKEDIN_CALLBACK_URL,
-  });
-
   // Store the Firebase token in session for the callback
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -70,31 +63,29 @@ const initOAuthConnect = (platform) => async (req, res, next) => {
     });
   });
 
+  // Use platform-specific options
   const authOptions = {
-    failureRedirect: `${CLIENT_URL}/settings?error=${platform} authentication failed`,
     session: true,
-    state: req.query.state || true,
+    state: true,
+    failureRedirect: `${CLIENT_URL}/settings?error=${encodeURIComponent(
+      `${platform} authentication failed. Please check your app permissions.`
+    )}`,
+    failWithError: true
   };
 
-  // Use scopes defined in oauthMiddleware.cjs
-  passport.authenticate(platform.toLowerCase(), {
-    ...authOptions,
-    failureRedirect: `${CLIENT_URL}/settings?error=${encodeURIComponent(`${platform} authentication failed. Please check your app permissions.`)}`,
-    failWithError: true,
-  })(req, res, async (err, user) => {
-    if (err) {
-      console.error(`${platform} authentication error:`, err);
-      console.error(`[${platform}] Authentication failed. Check the app settings and permissions.`);
-      console.error(`[${platform}] Error details:`, {
-        message: err.message,
-        stack: err.stack,
-        code: err.code,
-        statusCode: err.statusCode,
+  // Add PKCE for Twitter
+  if (platform.toLowerCase() === 'twitter') {
+    authOptions.pkce = true;
+    // Get code verifier from URL if available
+    if (req.query.code_verifier) {
+      debugLog('Twitter PKCE Debug - Received code verifier', {
+        codeVerifierLength: req.query.code_verifier.length
       });
-      return res.redirect(`${CLIENT_URL}/settings?error=${encodeURIComponent(err.message || `Failed to connect ${platform}`)}`);
     }
-    next();
-  });
+  }
+
+  // Use the named strategy
+  passport.authenticate(platform.toLowerCase(), authOptions)(req, res, next);
 };
 
 // OAuth connect routes
@@ -116,12 +107,6 @@ router.get(
   verifySession,
   initOAuthConnect("LinkedIn")
 );
-router.get(
-  "/instagram/connect",
-  verifyToken,
-  verifySession,
-  initOAuthConnect("Instagram")
-);
 
 // Common callback handler for all platforms
 const handleOAuthCallback = (platform) => async (req, res, next) => {
@@ -142,21 +127,37 @@ const handleOAuthCallback = (platform) => async (req, res, next) => {
     errorDescription: req.query.error_description,
   });
 
-  // Log OAuth state
+  // Store state in session for verification
+  const state = req.query.state;
+  const code = req.query.code;
+  req.session.oauthState = state;
+  
   debugLog(`${platform} OAuth State`, {
     state: req.query.state,
     code: req.query.code,
-    sessionState: req.session?.state,
-    isStateValid: req.query.state === req.session?.state,
+    sessionState: req.session.oauthState,
+    isStateValid: true
   });
+
+  // For Twitter OAuth 2.0, get code verifier from URL
+  if (platform.toLowerCase() === 'twitter') {
+    const codeVerifier = req.query.code_verifier;
+    debugLog('Twitter PKCE Debug', {
+      hasCodeVerifier: !!codeVerifier,
+      codeVerifierLength: codeVerifier?.length,
+      code: req.query.code
+    });
+  }
 
   passport.authenticate(
     platform.toLowerCase(),
-    { 
+    {
       session: true,
-      failureRedirect: `${CLIENT_URL}/settings?error=${encodeURIComponent(`${platform} authentication failed`)}`,
+      failureRedirect: `${CLIENT_URL}/settings?error=${encodeURIComponent(
+        `${platform} authentication failed`
+      )}`,
       failWithError: true,
-      state: false
+      state: true
     },
     async (err, user) => {
       if (err) {
@@ -167,7 +168,7 @@ const handleOAuthCallback = (platform) => async (req, res, next) => {
           statusCode: err.statusCode,
           state: req.query.state,
           error: req.query.error,
-          errorDescription: req.query.error_description
+          errorDescription: req.query.error_description,
         });
 
         // Prepare error details
@@ -176,15 +177,17 @@ const handleOAuthCallback = (platform) => async (req, res, next) => {
           statusCode: err.statusCode,
           state: req.query.state,
           error: req.query.error,
-          errorDescription: req.query.error_description
+          errorDescription: req.query.error_description,
         };
 
         // Send detailed error message via postMessage and close
         const message = {
-          type: 'oauth_callback',
-          status: 'error',
-          error: err.message || `Failed to connect ${platform}. Please check your app permissions and try again.`,
-          details: errorDetails
+          type: "oauth_callback",
+          status: "error",
+          error:
+            err.message ||
+            `Failed to connect ${platform}. Please check your app permissions and try again.`,
+          details: errorDetails,
         };
 
         const html = `
@@ -192,7 +195,9 @@ const handleOAuthCallback = (platform) => async (req, res, next) => {
           <html>
             <body>
               <script>
-                window.opener.postMessage(${JSON.stringify(JSON.stringify(message))}, '${CLIENT_URL}');
+                window.opener.postMessage(${JSON.stringify(
+                  JSON.stringify(message)
+                )}, '${CLIENT_URL}');
                 window.close();
               </script>
             </body>
@@ -354,11 +359,6 @@ router.get(
   verifySession,
   handleOAuthCallback("LinkedIn")
 );
-router.get(
-  "/instagram/callback",
-  verifySession,
-  handleOAuthCallback("Instagram")
-);
 
 // Get connected accounts
 router.get(
@@ -388,12 +388,11 @@ router.get(
             { platform: "twitter", connected: false },
             { platform: "facebook", connected: false },
             { platform: "linkedin", connected: false },
-            { platform: "instagram", connected: false },
           ]);
         }
 
         const userData = userDoc.data();
-        const platforms = ["twitter", "facebook", "linkedin", "instagram"];
+        const platforms = ["twitter", "facebook", "linkedin"];
 
         // Initialize accounts array
         const accounts = platforms.map((platform) => {
@@ -411,9 +410,6 @@ router.get(
                 break;
               case "linkedin":
                 profileUrl = `https://linkedin.com/in/${profile.username}`;
-                break;
-              case "instagram":
-                profileUrl = `https://instagram.com/${profile.username}`;
                 break;
             }
           }
@@ -450,7 +446,7 @@ router.delete(
       const { uid } = req.user;
 
       if (
-        !["facebook", "twitter", "linkedin", "instagram"].includes(platform)
+        !["facebook", "twitter", "linkedin"].includes(platform)
       ) {
         return res.status(400).json({ error: "Invalid platform" });
       }
@@ -488,26 +484,20 @@ router.get("/:platform/limits", verifyToken, verifySession, (req, res) => {
     facebook: {
       characterLimit: 63206,
       mediaLimit: 10,
-      mediaTypes: ["image/jpeg", "image/png", "image/gif", "video/mp4"],
+      mediaTypes: ["image/jpeg", "image/png", "gif", "video/mp4"],
       rateLimit: { posts: 50, timeWindow: "24h" },
     },
     twitter: {
       characterLimit: 280,
       mediaLimit: 4,
-      mediaTypes: ["image/jpeg", "image/png", "image/gif", "video/mp4"],
+      mediaTypes: ["image/jpeg", "image/png", "gif", "video/mp4"],
       rateLimit: { posts: 300, timeWindow: "3h" },
     },
     linkedin: {
       characterLimit: 3000,
       mediaLimit: 9,
-      mediaTypes: ["image/jpeg", "image/png", "image/gif", "video/mp4"],
+      mediaTypes: ["image/jpeg", "image/png", "gif", "video/mp4"],
       rateLimit: { posts: 100, timeWindow: "24h" },
-    },
-    instagram: {
-      characterLimit: 2200,
-      mediaLimit: 10,
-      mediaTypes: ["image/jpeg", "image/png", "video/mp4"],
-      rateLimit: { posts: 25, timeWindow: "24h" },
     },
   };
 
@@ -528,7 +518,6 @@ router.post("/:platform/validate", verifyToken, verifySession, (req, res) => {
     facebook: { text: 63206, media: 10 },
     twitter: { text: 280, media: 4 },
     linkedin: { text: 3000, media: 9 },
-    instagram: { text: 2200, media: 10 },
   };
 
   if (!limits[platform]) {

@@ -12,36 +12,25 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 export const socialAuthProviders: Record<string, SocialAuthProvider> = {
   twitter: {
     name: "Twitter",
-    scopes: ["tweet.read", "tweet.write", "users.read"],
+    scopes: ["users.read"],
     redirectUri: `${BASE_URL}/social/twitter/callback`,
     responseType: "code",
     display: "popup",
   },
   facebook: {
     name: "Facebook",
-    scopes: [
-      "public_profile",
-      "email"
-    ],
+    scopes: ["public_profile"],
     redirectUri: `${BASE_URL}/social/facebook/callback`,
     display: "popup",
     responseType: "code",
   },
-  
-
   linkedin: {
     name: "LinkedIn",
-    scopes: [
-      "openid",
-      "profile",
-      "email",
-      "w_member_social"
-    ],
+    scopes: ["openid", "profile"],
     redirectUri: `${BASE_URL}/social/linkedin/callback`,
     responseType: "code",
     display: "popup",
-  },  
-
+  },
   instagram: {
     name: "Instagram",
     scopes: ["instagram_basic", "instagram_content_publish", "pages_show_list"],
@@ -54,7 +43,26 @@ export const socialAuthProviders: Record<string, SocialAuthProvider> = {
 // Store generated states in memory for validation
 const stateStore = new Set<string>();
 
-export const getAuthUrl = (platform: string, token?: string): string => {
+// PKCE helper functions
+const generateCodeVerifier = (): string => {
+  const length = 64;
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, (byte) => charset[byte % charset.length]).join('');
+};
+
+const generateCodeChallenge = async (verifier: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(hash)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+};
+
+export const getAuthUrl = async (platform: string, token?: string): Promise<string> => {
   const provider = socialAuthProviders[platform];
   if (!provider) {
     throw new Error(`Unknown platform: ${platform}`);
@@ -82,18 +90,25 @@ export const getAuthUrl = (platform: string, token?: string): string => {
     url.searchParams.set("response_type", provider.responseType || "code");
     url.searchParams.set("scope", provider.scopes.join(" "));
     url.searchParams.set("auth_type", "rerequest");
-    url.searchParams.set("return_scopes", "true");
-    url.searchParams.set("enable_profile_selector", "true");
-    url.searchParams.set("debug", "true");
   } else if (platform === "linkedin") {
     url.searchParams.set("client_id", import.meta.env.VITE_LINKEDIN_CLIENT_ID);
     url.searchParams.set("redirect_uri", provider.redirectUri);
     url.searchParams.set("response_type", provider.responseType || "code");
     url.searchParams.set("scope", provider.scopes.join(" "));
   } else if (platform === "twitter") {
-    url.searchParams.set("oauth_callback", provider.redirectUri);
-    url.searchParams.set("x_auth_access_type", "write");
-    url.searchParams.set("force_login", "true");
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+    // Store code verifier in session storage and add to URL for the callback
+    sessionStorage.setItem("twitter_code_verifier", codeVerifier);
+    url.searchParams.set("code_verifier", codeVerifier);
+
+    url.searchParams.set("client_id", import.meta.env.VITE_TWITTER_CLIENT_ID);
+    url.searchParams.set("redirect_uri", provider.redirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", provider.scopes.join(" "));
+    url.searchParams.set("code_challenge", codeChallenge);
+    url.searchParams.set("code_challenge_method", "S256");
   }
 
   // Add token and state

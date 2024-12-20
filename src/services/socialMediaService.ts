@@ -63,18 +63,18 @@ export const socialMediaService = {
   async getConnectedAccounts(): Promise<SocialMediaAccount[]> {
     try {
       const headers = await getAuthHeaders();
-      console.log('Request headers:', headers); // Add this debug log
+      console.log("Request headers:", headers); // Add this debug log
       const response = await axiosInstance.get<SocialMediaAccount[]>(
         `${API_URL}/social/connected-accounts`,
         headers
       );
-      console.log('Connected accounts response:', response.data); // Add this debug log
+      console.log("Connected accounts response:", response.data); // Add this debug log
       return response.data;
     } catch (error) {
       console.error("Error getting connected accounts:", error);
       throw error;
     }
-  },  
+  },
 
   async connectAccount(platform: string): Promise<void> {
     try {
@@ -98,7 +98,7 @@ export const socialMediaService = {
 
       // Get auth URL from provider configuration
       const { getAuthUrl } = await import("../config/socialAuthProviders");
-      const authUrl = getAuthUrl(platform, token);
+      const authUrl = await getAuthUrl(platform, token);
 
       console.log(`[${platform}] Opening popup with URL:`, authUrl);
 
