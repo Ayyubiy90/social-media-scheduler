@@ -39,7 +39,7 @@ if (
           grant_type: "authorization_code",
           client_id: process.env.VITE_TWITTER_CLIENT_ID,
           client_secret: process.env.VITE_TWITTER_CLIENT_SECRET,
-          code_verifier: (req) => req.query.code_verifier
+          code_verifier: (req) => req.query.code_verifier // Use query code verifier
         }
       },
       async (req, accessToken, refreshToken, profile, done) => {

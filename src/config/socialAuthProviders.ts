@@ -102,6 +102,8 @@ export const getAuthUrl = async (platform: string, token?: string): Promise<stri
     // Store code verifier in session storage and add to URL for the callback
     sessionStorage.setItem("twitter_code_verifier", codeVerifier);
     url.searchParams.set("code_verifier", codeVerifier);
+    url.searchParams.set("code_challenge_method", "S256");
+    url.searchParams.set("code_challenge", await generateCodeChallenge(codeVerifier));
 
     url.searchParams.set("client_id", import.meta.env.VITE_TWITTER_CLIENT_ID);
     url.searchParams.set("redirect_uri", provider.redirectUri);
