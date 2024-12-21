@@ -23,8 +23,10 @@ if (
         tokenURL: "https://api.twitter.com/2/oauth2/token",
         clientID: process.env.VITE_TWITTER_CLIENT_ID,
         clientSecret: process.env.VITE_TWITTER_CLIENT_SECRET,
-        callbackURL: process.env.VITE_TWITTER_CALLBACK_URL || "http://localhost:5000/social/twitter/callback",
-        scope: "users.read",
+        callbackURL:
+          process.env.VITE_TWITTER_CALLBACK_URL ||
+          "http://localhost:5000/social/twitter/callback",
+        scope: ["users.read"],
         passReqToCallback: true,
         pkce: true,
         state: true,
@@ -33,14 +35,11 @@ if (
         userProfileURL: "https://api.twitter.com/2/users/me",
         authorizationParams: {
           response_type: "code",
-          code_challenge_method: "S256"
+          code_challenge_method: "S256",
         },
         tokenParams: {
           grant_type: "authorization_code",
-          client_id: process.env.VITE_TWITTER_CLIENT_ID,
-          client_secret: process.env.VITE_TWITTER_CLIENT_SECRET,
-          code_verifier: (req) => req.query.code_verifier // Use query code verifier
-        }
+        },
       },
       async (req, accessToken, refreshToken, profile, done) => {
         try {
@@ -94,7 +93,13 @@ if (process.env.VITE_FACEBOOK_APP_ID && process.env.VITE_FACEBOOK_APP_SECRET) {
         callbackURL:
           process.env.VITE_FACEBOOK_CALLBACK_URL ||
           "http://localhost:5000/social/facebook/callback",
-        profileFields: ["id", "displayName", "name", "picture.type(large)"],
+        profileFields: [
+          "id",
+          "displayName",
+          "name",
+          "picture.type(large)",
+          "email",
+        ],
         passReqToCallback: true,
         enableProof: true,
         state: true,
@@ -129,17 +134,19 @@ if (process.env.VITE_FACEBOOK_APP_ID && process.env.VITE_FACEBOOK_APP_SECRET) {
           const profileData = {
             id: profile.id,
             displayName: profile.displayName || profile.name?.givenName,
-            photos: profile.photos || (profile.picture ? [{ value: profile.picture.data.url }] : []),
+            photos:
+              profile.photos ||
+              (profile.picture ? [{ value: profile.picture.data.url }] : []),
             accessToken,
             refreshToken,
             _json: profile._json,
           };
-          
+
           // Ensure we have a username for the profile URL
           if (!profileData.username) {
             profileData.username = profile.id;
           }
-          
+
           return done(null, profileData);
         } catch (error) {
           return done(error, null);
@@ -163,12 +170,12 @@ if (
         callbackURL:
           process.env.VITE_LINKEDIN_CALLBACK_URL ||
           "http://localhost:5000/social/linkedin/callback",
-        scope: ["r_liteprofile"],
+        scope: ["profile", "email"],
         passReqToCallback: true,
         state: true,
         authorizationParams: {
-          response_type: "code"
-        }
+          response_type: "code",
+        },
       },
       async (req, accessToken, refreshToken, profile, done) => {
         try {
