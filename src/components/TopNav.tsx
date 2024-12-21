@@ -10,12 +10,14 @@ import {
   FilePlus2,
   Settings,
   Bell,
+  Loader2,
 } from "lucide-react";
 import { useUser } from "../contexts/UserContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationsDialog } from "./NotificationsDialog";
 import { ProfileDialog } from "./ProfileDialog";
+import { useProfilePicture } from "../hooks/useProfilePicture";
 
 interface TopNavProps {
   onSidebarToggle: () => void;
@@ -25,10 +27,11 @@ interface TopNavProps {
 export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
   const { unreadCount } = useNotifications();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { profilePicture, loading: loadingPicture } = useProfilePicture(user?.photoURL || null);
 
   const handleMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -80,6 +83,39 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
       label: "Settings",
     },
   ];
+
+  const renderAvatar = () => {
+    if (loadingPicture) {
+      return (
+        <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+          <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+        </div>
+      );
+    }
+
+    if (profilePicture) {
+      return (
+        <div className="relative">
+          <img
+            className="h-10 w-10 rounded-lg object-cover transition-all duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-sm"
+            src={profilePicture}
+            alt={`${user?.displayName || "User"}'s avatar`}
+          />
+          <div className="absolute inset-0 rounded-lg bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={`h-10 w-10 rounded-lg ${getProfileColor(
+          user?.email
+        )} flex items-center justify-center text-white text-sm font-semibold transition-all duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-sm`}
+      >
+        {getInitial(user?.email)}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -141,24 +177,7 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
                 className="relative group cursor-pointer"
                 onClick={() => setIsProfileOpen(true)}
               >
-                {user?.photoURL ? (
-                  <div className="relative">
-                    <img
-                      className="h-10 w-10 rounded-lg object-cover transition-all duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-sm"
-                      src={user.photoURL}
-                      alt={`${user?.displayName || "User"}'s avatar`}
-                    />
-                    <div className="absolute inset-0 rounded-lg bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
-                  </div>
-                ) : (
-                  <div
-                    className={`h-10 w-10 rounded-lg ${getProfileColor(
-                      user?.email
-                    )} flex items-center justify-center text-white text-sm font-semibold transition-all duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-sm`}
-                  >
-                    {getInitial(user?.email)}
-                  </div>
-                )}
+                {renderAvatar()}
               </div>
             </div>
 
@@ -196,6 +215,7 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         user={user || { uid: "", displayName: null, email: null, photoURL: null, token: "" }}
+        onProfileUpdate={refreshUser}
       />
     </>
   );

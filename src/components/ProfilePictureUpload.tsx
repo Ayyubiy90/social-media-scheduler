@@ -7,6 +7,9 @@ interface ProfilePictureUploadProps {
   onUpload: (file: File) => Promise<void>;
 }
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+
 export function ProfilePictureUpload({
   isOpen,
   onClose,
@@ -19,6 +22,16 @@ export function ProfilePictureUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
+
+  const validateFile = (file: File): string | null => {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return "Please select a valid image file (JPEG, PNG, GIF, or WebP)";
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return `File size must be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB`;
+    }
+    return null;
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -48,12 +61,9 @@ export function ProfilePictureUpload({
 
   const handleFile = (file: File) => {
     setError(null);
-    if (!file.type.startsWith("image/")) {
-      setError("Please select an image file");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setError("File size must be less than 10MB");
+    const validationError = validateFile(file);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setSelectedFile(file);
@@ -67,12 +77,25 @@ export function ProfilePictureUpload({
   const handleUpload = async () => {
     if (selectedFile) {
       try {
+        setError(null);
         await onUpload(selectedFile);
-        onClose();
       } catch (error) {
         console.error("Error uploading profile picture:", error);
-        setError("Failed to upload image. Please try again.");
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to upload image. Please try again."
+        );
       }
+    }
+  };
+
+  const handleRemove = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -138,11 +161,7 @@ export function ProfilePictureUpload({
                     <div className="absolute inset-0 rounded-xl bg-black opacity-0 hover:opacity-10 transition-opacity duration-200" />
                   </div>
                   <button
-                    onClick={() => {
-                      setSelectedFile(null);
-                      setPreviewUrl(null);
-                      setError(null);
-                    }}
+                    onClick={handleRemove}
                     className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                     <X className="w-4 h-4" />
                     Remove
@@ -161,7 +180,7 @@ export function ProfilePictureUpload({
                         <input
                           type="file"
                           className="hidden"
-                          accept="image/*"
+                          accept={ALLOWED_TYPES.join(",")}
                           onChange={handleChange}
                           ref={fileInputRef}
                         />
@@ -169,7 +188,8 @@ export function ProfilePictureUpload({
                       {" or drag and drop"}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      PNG, JPG, GIF up to 10MB
+                      JPEG, PNG, GIF, or WebP up to{" "}
+                      {MAX_FILE_SIZE / (1024 * 1024)}MB
                     </p>
                   </div>
                 </div>

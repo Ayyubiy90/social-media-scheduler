@@ -6,6 +6,23 @@ service cloud.firestore {
       allow read, write, create, update, delete: if true;
     }
     
+    // Rules for users collection
+    match /users/{userId} {
+      // Allow users to read and update their own profile
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow reading profile pictures for all authenticated users
+      allow read: if request.auth != null && 
+                 (resource == null || 
+                  request.resource.data.keys().hasAny(['profilePicture', 'profilePictureUpdatedAt']));
+                  
+      // Allow users to update their own profile picture
+      allow update: if request.auth != null && 
+                   request.auth.uid == userId &&
+                   request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['profilePicture', 'profilePictureUpdatedAt', 'lastUpdated']);
+    }
+    
     // Default deny all for other collections
     match /{document=**} {
       allow read, write: if request.auth != null;

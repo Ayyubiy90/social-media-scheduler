@@ -1,14 +1,18 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow read access to profile pictures for all users
-    match /profile-pictures/{userId}/{allPaths=**} {
+    match /profile-pictures/{userId}/{fileName} {
+      // Allow anyone to read profile pictures
       allow read: if true;
-      // Only allow write access to authenticated users for their own profile pictures
-      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow users to upload their own profile pictures
+      allow write: if request.auth != null 
+                  && request.auth.uid == userId
+                  && request.resource.size < 5 * 1024 * 1024 // 5MB max
+                  && request.resource.contentType.matches('image/.*');
     }
     
-    // Default deny all for other paths
+    // Default deny for all other paths
     match /{allPaths=**} {
       allow read, write: if false;
     }

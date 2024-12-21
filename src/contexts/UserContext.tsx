@@ -1,132 +1,61 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
-import {
-  loginUser,
-  registerUser,
-  logoutUser,
-  subscribeToAuthChanges,
-  socialLogin,
-  User,
-} from "../services/authService";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { User } from "../services/authService";
+import { subscribeToAuthChanges, logoutUser } from "../services/authService";
+import { clearProfilePictureCache } from "../hooks/useProfilePicture";
 
 interface UserContextType {
   user: User | null;
   loading: boolean;
-  error: string | null;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
-  register: (userData: { email: string; password: string }) => Promise<void>;
-  socialLogin: (provider: string) => Promise<void>;
   logout: () => Promise<void>;
-  clearError: () => void;
+  refreshUser: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-export const UserProvider = ({ children }: { children: ReactNode }) => {
+export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const handleUserChange = (newUser: User | null) => {
+    setUser(newUser);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    // Subscribe to Firebase auth state changes
-    const unsubscribe = subscribeToAuthChanges((user) => {
-      setUser(user);
-      setLoading(false);
-    });
-
-    // Cleanup subscription on unmount
+    const unsubscribe = subscribeToAuthChanges(handleUserChange);
     return () => unsubscribe();
   }, []);
 
-  const handleError = (error: unknown) => {
-    if (error instanceof Error) {
-      setError(error.message);
-    } else {
-      setError("An unexpected error occurred");
-    }
-    throw error;
-  };
-
-  const clearError = () => setError(null);
-
-  const login = async (credentials: { email: string; password: string }) => {
-    try {
-      clearError();
-      setLoading(true);
-      const userData = await loginUser(credentials);
-      setUser(userData);
-    } catch (error) {
-      handleError(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (userData: { email: string; password: string }) => {
-    try {
-      clearError();
-      setLoading(true);
-      const newUser = await registerUser(userData);
-      setUser(newUser);
-    } catch (error) {
-      handleError(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSocialLogin = async (provider: string) => {
-    try {
-      clearError();
-      setLoading(true);
-      const userData = await socialLogin(provider);
-      setUser(userData);
-    } catch (error) {
-      handleError(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const logout = async () => {
     try {
-      clearError();
-      setLoading(true);
       await logoutUser();
       setUser(null);
     } catch (error) {
-      handleError(error);
-    } finally {
-      setLoading(false);
+      console.error("Error logging out:", error);
+      throw error;
     }
   };
 
+  const refreshUser = () => {
+    // Clear the profile picture cache for the current user
+    if (user?.uid) {
+      clearProfilePictureCache(user.uid);
+    }
+    // Force a re-render of components using the user context
+    setUser(user ? { ...user } : null);
+  };
+
   return (
-    <UserContext.Provider
-      value={{
-        user,
-        loading,
-        error,
-        login,
-        register,
-        socialLogin: handleSocialLogin,
-        logout,
-        clearError,
-      }}>
+    <UserContext.Provider value={{ user, loading, logout, refreshUser }}>
       {children}
     </UserContext.Provider>
   );
-};
+}
 
-export const useUser = () => {
+export function useUser() {
   const context = useContext(UserContext);
   if (context === undefined) {
     throw new Error("useUser must be used within a UserProvider");
   }
   return context;
-};
+}
