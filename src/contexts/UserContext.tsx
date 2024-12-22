@@ -1,13 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { User } from "../services/authService";
-import { subscribeToAuthChanges, logoutUser } from "../services/authService";
+import { User, Credentials } from "../services/authService";
+import {
+  subscribeToAuthChanges,
+  logoutUser,
+  registerUser,
+} from "../services/authService";
 import { clearProfilePictureCache } from "../hooks/useProfilePicture";
 
 interface UserContextType {
   user: User | null;
   loading: boolean;
+  error: string | null;
+  register: (credentials: Credentials) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => void;
+  clearError: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -15,6 +22,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const handleUserChange = (newUser: User | null) => {
     setUser(newUser);
@@ -26,13 +34,30 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  const register = async (credentials: Credentials) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await registerUser(credentials);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Registration failed");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
+      setLoading(true);
+      setError(null);
       await logoutUser();
       setUser(null);
-    } catch (error) {
-      console.error("Error logging out:", error);
-      throw error;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Logout failed");
+      throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -45,8 +70,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setUser(user ? { ...user } : null);
   };
 
+  const clearError = () => {
+    setError(null);
+  };
+
   return (
-    <UserContext.Provider value={{ user, loading, logout, refreshUser }}>
+    <UserContext.Provider
+      value={{
+        user,
+        loading,
+        error,
+        register,
+        logout,
+        refreshUser,
+        clearError,
+      }}>
       {children}
     </UserContext.Provider>
   );

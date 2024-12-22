@@ -28,7 +28,7 @@ export interface User {
   photoURL: string | null;
 }
 
-interface Credentials {
+export interface Credentials {
   email: string;
   password: string;
 }
@@ -45,14 +45,18 @@ const API_URL = import.meta.env.VITE_API_URL;
 const createUserDocument = async (user: FirebaseUser) => {
   const db = getFirestore();
   const userRef = doc(db, "users", user.uid);
-  
-  await setDoc(userRef, {
-    email: user.email,
-    displayName: user.displayName,
-    photoURL: user.photoURL,
-    createdAt: serverTimestamp(),
-    lastUpdated: serverTimestamp(),
-  }, { merge: true }); // Use merge to avoid overwriting existing data
+
+  await setDoc(
+    userRef,
+    {
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      createdAt: serverTimestamp(),
+      lastUpdated: serverTimestamp(),
+    },
+    { merge: true }
+  ); // Use merge to avoid overwriting existing data
 };
 
 const mapFirebaseUserToUser = async (
@@ -61,10 +65,10 @@ const mapFirebaseUserToUser = async (
   const token = await firebaseUser.getIdToken();
   // Store token in localStorage
   localStorage.setItem("token", token);
-  
+
   // Create/update user document in Firestore
   await createUserDocument(firebaseUser);
-  
+
   return {
     token,
     uid: firebaseUser.uid,
