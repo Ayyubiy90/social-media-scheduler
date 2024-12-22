@@ -16,6 +16,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { ProfileDialog } from "./ProfileDialog";
 import { useProfilePicture } from "../hooks/useProfilePicture";
+import { Footer } from "./Footer";
 
 interface NavItem {
   icon: React.ElementType;
@@ -57,7 +58,7 @@ function ProfileIcon() {
   const renderAvatar = () => {
     if (loadingPicture) {
       return (
-        <div className="h-12 w-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+        <div className="h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
           <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
         </div>
       );
@@ -67,18 +68,18 @@ function ProfileIcon() {
       return (
         <div className="relative">
           <img
-            className="h-12 w-12 rounded-xl object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-lg"
+            className="h-12 w-12 rounded-full object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-lg"
             src={profilePicture}
             alt={`${user?.displayName || "User"}'s avatar`}
           />
-          <div className="absolute inset-0 rounded-xl bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
+          <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
         </div>
       );
     }
 
     return (
       <div
-        className={`h-12 w-12 rounded-xl ${getProfileColor(
+        className={`h-12 w-12 rounded-full ${getProfileColor(
           user?.email
         )} flex items-center justify-center text-white text-lg font-semibold transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-lg`}>
         {getInitial(user?.email)}
@@ -190,7 +191,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           </h2>
           <button
             onClick={onClose}
-            className="p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 transition-all duration-200 transform hover:scale-105 active:scale-95"
+            className="p-2.5 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md"
             aria-label="Close menu">
             <PanelRightClose className="h-5 w-5" />
           </button>
@@ -244,6 +245,9 @@ export function Sidebar({ onClose }: SidebarProps) {
           ))}
         </nav>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
