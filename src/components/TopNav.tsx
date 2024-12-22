@@ -31,7 +31,9 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
   const { unreadCount } = useNotifications();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { profilePicture, loading: loadingPicture } = useProfilePicture(user?.photoURL || null);
+  const { profilePicture, loading: loadingPicture } = useProfilePicture(
+    user?.photoURL || null
+  );
 
   const handleMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -110,8 +112,7 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
       <div
         className={`h-10 w-10 rounded-lg ${getProfileColor(
           user?.email
-        )} flex items-center justify-center text-white text-sm font-semibold transition-all duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-sm`}
-      >
+        )} flex items-center justify-center text-white text-sm font-semibold transition-all duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-sm`}>
         {getInitial(user?.email)}
       </div>
     );
@@ -173,10 +174,9 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
 
             {/* Avatar - only visible on desktop */}
             <div className="hidden md:block">
-              <div 
+              <div
                 className="relative group cursor-pointer"
-                onClick={() => setIsProfileOpen(true)}
-              >
+                onClick={() => setIsProfileOpen(true)}>
                 {renderAvatar()}
               </div>
             </div>
@@ -185,20 +185,24 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
             <button
               onClick={handleMenuClick}
               className={`
-                block md:hidden p-2 rounded-lg
-                transition-all duration-200
+                block md:hidden p-2.5 rounded-lg
+                transition-all duration-200 transform
                 ${
                   isSidebarOpen
-                    ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 scale-95"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:scale-105"
                 }
+                active:scale-90
+                shadow-sm hover:shadow-md
               `}
               aria-label="Toggle navigation">
-              {isSidebarOpen ? (
-                <PanelRightClose className="w-5 h-5" />
-              ) : (
-                <PanelRightOpen className="w-5 h-5" />
-              )}
+              <div className="relative w-5 h-5">
+                {isSidebarOpen ? (
+                  <PanelRightClose className="w-5 h-5 absolute top-0 left-0 transition-all duration-300 transform rotate-0" />
+                ) : (
+                  <PanelRightOpen className="w-5 h-5 absolute top-0 left-0 transition-all duration-300 transform rotate-0" />
+                )}
+              </div>
             </button>
           </div>
         </div>
@@ -214,7 +218,15 @@ export function TopNav({ onSidebarToggle, isSidebarOpen }: TopNavProps) {
       <ProfileDialog
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
-        user={user || { uid: "", displayName: null, email: null, photoURL: null, token: "" }}
+        user={
+          user || {
+            uid: "",
+            displayName: null,
+            email: null,
+            photoURL: null,
+            token: "",
+          }
+        }
         onProfileUpdate={refreshUser}
       />
     </>

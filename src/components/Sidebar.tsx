@@ -57,8 +57,8 @@ function ProfileIcon() {
   const renderAvatar = () => {
     if (loadingPicture) {
       return (
-        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-          <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+        <div className="h-12 w-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
         </div>
       );
     }
@@ -67,20 +67,20 @@ function ProfileIcon() {
       return (
         <div className="relative">
           <img
-            className="h-10 w-10 rounded-full object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500"
+            className="h-12 w-12 rounded-xl object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-lg"
             src={profilePicture}
             alt={`${user?.displayName || "User"}'s avatar`}
           />
-          <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
+          <div className="absolute inset-0 rounded-xl bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
         </div>
       );
     }
 
     return (
       <div
-        className={`h-10 w-10 rounded-full ${getProfileColor(
+        className={`h-12 w-12 rounded-xl ${getProfileColor(
           user?.email
-        )} flex items-center justify-center text-white text-sm font-semibold transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500`}>
+        )} flex items-center justify-center text-white text-lg font-semibold transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-lg`}>
         {getInitial(user?.email)}
       </div>
     );
@@ -190,7 +190,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           </h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 transition-colors"
+            className="p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 transition-all duration-200 transform hover:scale-105 active:scale-95"
             aria-label="Close menu">
             <PanelRightClose className="h-5 w-5" />
           </button>
@@ -199,13 +199,13 @@ export function Sidebar({ onClose }: SidebarProps) {
 
       {/* Profile Section */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-4">
           <ProfileIcon />
           <div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+            <h3 className="text-base font-medium text-gray-900 dark:text-white">
               {user?.displayName || "User"}
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {user?.email}
             </p>
           </div>
@@ -213,28 +213,28 @@ export function Sidebar({ onClose }: SidebarProps) {
       </div>
 
       {/* Navigation Items */}
-      <div className="flex-1 overflow-y-auto overscroll-contain">
-        <nav className="px-2 py-4 space-y-1">
+      <div className="flex-1 overflow-y-auto overscroll-contain py-2">
+        <nav className="px-2 space-y-1">
           {navItems.map((item, index) => (
             <div key={index} className={item.className || "w-full"}>
               {item.component ? (
-                <div className="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300">
+                <div className="flex items-center px-4 py-3.5 text-gray-700 dark:text-gray-300 rounded-lg">
                   <item.icon className="h-5 w-5 mr-3" />
-                  <span className="flex-grow">{item.label}</span>
+                  <span className="flex-grow text-base">{item.label}</span>
                   <item.component />
                 </div>
               ) : (
                 <button
                   onClick={() => handleItemClick(item.onClick)}
-                  className={`w-full flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors ${
+                  className={`w-full flex items-center px-4 py-3.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] ${
                     item.path && location.pathname === item.path
-                      ? "bg-gray-100 dark:bg-gray-700"
+                      ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 shadow-sm"
                       : ""
                   }`}>
                   <item.icon className="h-5 w-5 mr-3" />
-                  <span className="flex-grow">{item.label}</span>
+                  <span className="flex-grow text-base">{item.label}</span>
                   {item.badge && item.badge > 0 && (
-                    <span className="px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full">
+                    <span className="px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full ring-2 ring-white dark:ring-gray-800">
                       {item.badge}
                     </span>
                   )}
