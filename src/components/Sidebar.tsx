@@ -8,12 +8,14 @@ import {
   FilePlus2,
   LayoutDashboard,
   PanelRightClose,
+  Loader2,
 } from "lucide-react";
 import { useNotifications } from "../contexts/NotificationContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import { ProfileDialog } from "./ProfileDialog";
+import { useProfilePicture } from "../hooks/useProfilePicture";
 
 interface NavItem {
   icon: React.ElementType;
@@ -30,8 +32,9 @@ interface SidebarProps {
 }
 
 function ProfileIcon() {
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { profilePicture, loading: loadingPicture } = useProfilePicture(user?.photoURL || null);
 
   const getInitial = (email: string | null | undefined) => {
     return email ? email[0].toUpperCase() : "U";
@@ -51,28 +54,44 @@ function ProfileIcon() {
     return colors[index];
   };
 
+  const renderAvatar = () => {
+    if (loadingPicture) {
+      return (
+        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+          <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+        </div>
+      );
+    }
+
+    if (profilePicture) {
+      return (
+        <div className="relative">
+          <img
+            className="h-10 w-10 rounded-full object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500"
+            src={profilePicture}
+            alt={`${user?.displayName || "User"}'s avatar`}
+          />
+          <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={`h-10 w-10 rounded-full ${getProfileColor(
+          user?.email
+        )} flex items-center justify-center text-white text-sm font-semibold transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500`}>
+        {getInitial(user?.email)}
+      </div>
+    );
+  };
+
   return (
     <>
       <div
         onClick={() => setIsProfileOpen(true)}
         className="relative group cursor-pointer">
-        {user?.photoURL ? (
-          <div className="relative">
-            <img
-              className="h-10 w-10 rounded-full object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500"
-              src={user.photoURL}
-              alt={`${user?.displayName || "User"}'s avatar`}
-            />
-            <div className="absolute inset-0 rounded-full bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-200" />
-          </div>
-        ) : (
-          <div
-            className={`h-10 w-10 rounded-full ${getProfileColor(
-              user?.email
-            )} flex items-center justify-center text-white text-sm font-semibold transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-500`}>
-            {getInitial(user?.email)}
-          </div>
-        )}
+        {renderAvatar()}
       </div>
 
       <ProfileDialog
@@ -87,6 +106,7 @@ function ProfileIcon() {
             token: "",
           }
         }
+        onProfileUpdate={refreshUser}
       />
     </>
   );
