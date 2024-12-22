@@ -1,98 +1,160 @@
-import React, { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
-import { Upload, Image as ImageIcon, Film, X, Loader2, Info } from 'lucide-react';
-import { 
-  validateMediaFile, 
-  compressImage, 
-  fileToBase64, 
-  ALLOWED_IMAGE_TYPES, 
+import React, { useCallback, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import {
+  Upload,
+  Image as ImageIcon,
+  Film,
+  X,
+  Loader2,
+  Info,
+} from "lucide-react";
+import {
+  validateMediaFile,
+  compressImage,
+  fileToBase64,
+  ALLOWED_IMAGE_TYPES,
   ALLOWED_VIDEO_TYPES,
   PLATFORM_LIMITS,
-  MediaValidationResult
-} from '../utils/mediaUtils';
+} from "../utils/mediaUtils";
+
+interface MediaFile {
+  file: File;
+  preview: string;
+  type: "image" | "video";
+}
 
 interface MediaUploadProps {
-  onFileSelect: (file: File | null) => void;
+  onFileSelect: (files: File[] | null) => void;
   selectedPlatforms: string[];
 }
 
-const MediaUpload: React.FC<MediaUploadProps> = ({ onFileSelect, selectedPlatforms }) => {
-  const [preview, setPreview] = useState<string | null>(null);
-  const [fileType, setFileType] = useState<'image' | 'video' | null>(null);
+const MediaUpload: React.FC<MediaUploadProps> = ({
+  onFileSelect,
+  selectedPlatforms,
+}) => {
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [tips, setTips] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const processFile = async (file: File) => {
+  const processFiles = async (files: File[]) => {
     setIsProcessing(true);
     setError(null);
     setTips([]);
-    
+
     try {
-      // Validate for each selected platform
-      const allTips: string[] = [];
+      // Check platform-specific file count limits
       for (const platform of selectedPlatforms) {
-        const validation: MediaValidationResult = validateMediaFile(file, platform);
-        if (!validation.isValid) {
-          setError(validation.error || 'Invalid file');
-          if (validation.tips) {
-            setTips(validation.tips);
-          }
-          onFileSelect(null);
+        if (platform === "twitter" && files.length > 4) {
+          setError("Twitter allows a maximum of 4 images per post");
           return;
         }
-        // Collect tips from all platforms
-        if (validation.tips) {
-          allTips.push(...validation.tips);
+      }
+
+      const processedFiles: MediaFile[] = [];
+      const allTips: string[] = [];
+      let hasError = false;
+
+      // Process each file
+      for (const file of files) {
+        // Validate file for each selected platform
+        for (const platform of selectedPlatforms) {
+          const validation = validateMediaFile(file, platform);
+          if (!validation.isValid) {
+            setError(`${file.name}: ${validation.error}`);
+            if (validation.tips) {
+              allTips.push(...validation.tips);
+            }
+            hasError = true;
+            break;
+          }
+          if (validation.tips) {
+            allTips.push(...validation.tips);
+          }
+        }
+
+        if (hasError) break;
+
+        let processedFile = file;
+        let fileType: "image" | "video";
+
+        // Process images and videos
+        if (ALLOWED_IMAGE_TYPES.includes(file.type)) {
+          try {
+            const platform = selectedPlatforms[0];
+            processedFile = await compressImage(file, platform);
+            fileType = "image";
+          } catch (err) {
+            console.error(`Error processing image ${file.name}:`, err);
+            setError(`Failed to process image ${file.name}`);
+            hasError = true;
+            break;
+          }
+        } else if (ALLOWED_VIDEO_TYPES.includes(file.type)) {
+          fileType = "video";
+        } else {
+          continue; // Skip unsupported file types
+        }
+
+        try {
+          const preview = await fileToBase64(processedFile);
+          processedFiles.push({
+            file: processedFile,
+            preview,
+            type: fileType,
+          });
+        } catch (err) {
+          console.error(`Error generating preview for ${file.name}:`, err);
+          setError(`Failed to generate preview for ${file.name}`);
+          hasError = true;
+          break;
         }
       }
-      setTips([...new Set(allTips)]); // Remove duplicates
 
-      let processedFile = file;
-      if (ALLOWED_IMAGE_TYPES.includes(file.type)) {
-        // If multiple platforms selected, use the most restrictive settings
-        const platform = selectedPlatforms[0]; // Use first platform's settings for compression
-        processedFile = await compressImage(file, platform);
-        setFileType('image');
-      } else if (ALLOWED_VIDEO_TYPES.includes(file.type)) {
-        setFileType('video');
+      if (!hasError) {
+        // Combine new files with existing ones
+        const updatedFiles = [...mediaFiles, ...processedFiles];
+        setMediaFiles(updatedFiles);
+        setTips([...new Set(allTips)]);
+        onFileSelect(updatedFiles.map((pf) => pf.file));
       }
-
-      const previewUrl = await fileToBase64(processedFile);
-      setPreview(previewUrl);
-      onFileSelect(processedFile);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to process file');
-      setPreview(null);
+      setError(err instanceof Error ? err.message : "Failed to process files");
       onFileSelect(null);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      await processFile(acceptedFiles[0]);
-    }
-  }, [selectedPlatforms]);
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        await processFiles(acceptedFiles);
+      }
+    },
+    [selectedPlatforms]
+  );
 
-  const clearMedia = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPreview(null);
-    setFileType(null);
-    setError(null);
-    setTips([]);
-    onFileSelect(null);
-  }, [onFileSelect]);
+  const removeFile = useCallback(
+    (index: number) => {
+      setMediaFiles((prev) => {
+        const newFiles = [...prev];
+        newFiles.splice(index, 1);
+        onFileSelect(newFiles.length > 0 ? newFiles.map((f) => f.file) : null);
+        return newFiles;
+      });
+    },
+    [onFileSelect]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif'],
-      'video/*': ['.mp4', '.mov']
+      "image/*": [".jpeg", ".jpg", ".png", ".gif"],
+      "video/*": [".mp4", ".mov"],
     },
-    multiple: false,
-    disabled: isProcessing
+    multiple: true,
+    disabled: isProcessing,
   });
 
   const renderPlatformLimits = () => {
@@ -100,17 +162,23 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ onFileSelect, selectedPlatfor
 
     return (
       <div className="mt-4 space-y-2 text-xs text-gray-500 dark:text-gray-400">
-        {selectedPlatforms.map(platform => {
-          const limits = PLATFORM_LIMITS[platform as keyof typeof PLATFORM_LIMITS];
+        {selectedPlatforms.map((platform) => {
+          const limits =
+            PLATFORM_LIMITS[platform as keyof typeof PLATFORM_LIMITS];
           if (!limits) return null;
 
           return (
             <div key={platform} className="flex flex-col gap-1">
               <span className="font-medium capitalize">{platform} Limits:</span>
               <span>
-                Images: {typeof limits.image === 'number' 
-                  ? `${Math.round(limits.image / (1024 * 1024))}MB` 
-                  : `JPEG: ${Math.round(limits.image.jpeg / (1024 * 1024))}MB, PNG: ${Math.round(limits.image.png / (1024 * 1024))}MB`}
+                Images:{" "}
+                {typeof limits.image === "number"
+                  ? `${Math.round(limits.image / (1024 * 1024))}MB`
+                  : `JPEG: ${Math.round(
+                      limits.image.jpeg / (1024 * 1024)
+                    )}MB, PNG: ${Math.round(
+                      limits.image.png / (1024 * 1024)
+                    )}MB`}
               </span>
               <span>Videos: {Math.round(limits.video / (1024 * 1024))}MB</span>
             </div>
@@ -141,75 +209,94 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ onFileSelect, selectedPlatfor
           </ul>
         </div>
       )}
-      
+
       <div
         {...getRootProps()}
         className={`
           relative border-2 border-dashed rounded-lg
           transition-all duration-200 ease-in-out
-          ${isDragActive 
-            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/10' 
-            : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500'
+          ${
+            isDragActive
+              ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/10"
+              : "border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500"
           }
-          ${preview ? 'h-[300px]' : 'h-[200px]'}
-          ${isProcessing ? 'cursor-wait' : 'cursor-pointer'}
+          min-h-[200px]
+          ${isProcessing ? "cursor-wait" : "cursor-pointer"}
           group
-        `}
-      >
+        `}>
         <input {...getInputProps()} />
-        
+
         {isProcessing ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-            <span className="ml-2 text-gray-600 dark:text-gray-300">Processing media...</span>
+            <span className="ml-2 text-gray-600 dark:text-gray-300">
+              Processing media...
+            </span>
           </div>
-        ) : preview ? (
-          <div className="absolute inset-0 flex items-center justify-center p-4">
-            {fileType === 'image' ? (
-              <img 
-                src={preview} 
-                alt="Preview" 
-                className="max-h-full max-w-full object-contain rounded-lg"
-              />
-            ) : (
-              <video 
-                src={preview}
-                className="max-h-full max-w-full rounded-lg"
-                controls
-              />
-            )}
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center rounded-lg">
-              <div className="flex flex-col items-center gap-2">
-                <button
-                  onClick={clearMedia}
-                  className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-                <p className="text-white text-sm">
-                  Click to replace or remove
-                </p>
+        ) : mediaFiles.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4">
+            {mediaFiles.map((media, index) => (
+              <div key={index} className="relative aspect-square group">
+                {media.type === "image" ? (
+                  <img
+                    src={media.preview}
+                    alt={`Preview ${index}`}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <video
+                    src={media.preview}
+                    className="w-full h-full object-cover rounded-lg"
+                    controls
+                  />
+                )}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center rounded-lg">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFile(index);
+                    }}
+                    className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center justify-center aspect-square border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+              <div className="text-center p-4">
+                <Upload className="w-8 h-8 mx-auto text-gray-400" />
+                <p className="mt-2 text-sm text-gray-500">Add more media</p>
               </div>
             </div>
           </div>
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-center p-6">
             <div className="mb-4">
-              <div className={`
+              <div
+                className={`
                 p-4 rounded-full 
-                ${isDragActive ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-600'}
+                ${
+                  isDragActive
+                    ? "bg-indigo-100 text-indigo-600"
+                    : "bg-gray-100 text-gray-600"
+                }
                 dark:bg-gray-800 dark:text-gray-400
               `}>
                 <Upload className="w-8 h-8" />
               </div>
             </div>
-            <p className={`text-lg font-medium ${
-              isDragActive ? 'text-indigo-600' : 'text-gray-700 dark:text-gray-300'
-            }`}>
-              {isDragActive ? 'Drop your file here' : 'Drag & drop your media here'}
+            <p
+              className={`text-lg font-medium ${
+                isDragActive
+                  ? "text-indigo-600"
+                  : "text-gray-700 dark:text-gray-300"
+              }`}>
+              {isDragActive
+                ? "Drop your files here"
+                : "Drag & drop your media here"}
             </p>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              or click to select a file
+              or click to select files
             </p>
             <div className="mt-4 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
               <div className="flex items-center gap-1">
