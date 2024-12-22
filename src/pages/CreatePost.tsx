@@ -169,6 +169,19 @@ const CreatePost = () => {
                 />
               </div>
 
+              {/* Media Upload */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Upload Media
+                </label>
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  className="block w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white p-3 text-base transition-colors duration-200"
+                />
+              </div>
+
               {/* Platform Selection */}
               <div className="space-y-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
