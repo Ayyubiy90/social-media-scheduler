@@ -147,9 +147,9 @@ export function ProfileDialog({
       className="fixed inset-0 z-50 overflow-hidden bg-black bg-opacity-25 backdrop-blur-sm"
       onClick={onClose}>
       <div
-        className="fixed inset-x-4 top-20 md:inset-x-auto md:left-auto md:right-4 md:w-96 z-50"
+        className="fixed top-20 left-4 right-12 md:inset-x-auto md:left-auto md:right-4 md:w-96 z-50 max-w-[95vw] w-full sm:max-w-md transform transition-all duration-300"
         onClick={(e) => e.stopPropagation()}>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl transform transition-all duration-200">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl transform transition-all duration-300 w-full animate-slide-in-left animate-fade-in">
           {/* Header with Profile Picture */}
           <div className="relative h-32 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-t-xl">
             <div className="absolute -bottom-12 inset-x-0 flex justify-center">
@@ -204,23 +204,23 @@ export function ProfileDialog({
           <div className={`${uploadStatus.type ? "mt-4" : "mt-16"} px-6`}>
             <div className="space-y-4">
               <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <User className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                <div>
+                <User className="w-5 h-5 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+                <div className="min-w-0 flex-1">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Name
                   </p>
-                  <p className="font-medium text-gray-900 dark:text-white">
+                  <p className="font-medium text-gray-900 dark:text-white truncate">
                     {user?.displayName || "User"}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <Mail className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                <div>
+                <Mail className="w-5 h-5 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+                <div className="min-w-0 flex-1">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Email
                   </p>
-                  <p className="font-medium text-gray-900 dark:text-white">
+                  <p className="font-medium text-gray-900 dark:text-white truncate">
                     {user?.email}
                   </p>
                 </div>
