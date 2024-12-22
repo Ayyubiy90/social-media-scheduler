@@ -49,7 +49,7 @@ const Dashboard = () => {
             </div>
 
             {/* Scheduled Posts Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-4 transition-all duration-200 hover:shadow-lg backdrop-blur-md bg-opacity-30">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-4 transition-all duration-200 shadow-[0_0_15px_rgba(0,0,0,0.2)] hover:shadow-[0_0_20px_rgba(0,0,0,0.3)] backdrop-blur-md bg-opacity-90 dark:bg-opacity-90">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <CalendarCheck className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
@@ -70,7 +70,7 @@ const Dashboard = () => {
                   scheduledPosts.map((post) => (
                     <div
                       key={post.id}
-                      className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 transition-all duration-200 hover:shadow-lg">
+                      className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 transition-all duration-200 shadow-[0_0_10px_rgba(0,0,0,0.1)] hover:shadow-[0_0_15px_rgba(0,0,0,0.2)]">
                       <p className="text-gray-900 dark:text-white text-lg mb-4">
                         {post.content}
                       </p>
@@ -103,7 +103,7 @@ const Dashboard = () => {
             </div>
 
             {/* Drafts Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 transform transition-all duration-200 hover:shadow-lg mb-4 backdrop-blur-md bg-opacity-30">
+            <div className="bg-white dark:bg-gray-800 rounded-lg px-6 py-8 transform transition-all duration-200 shadow-[0_0_15px_rgba(0,0,0,0.2)] hover:shadow-[0_0_20px_rgba(0,0,0,0.3)] mb-4 backdrop-blur-md bg-opacity-90 dark:bg-opacity-90">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
                   <Archive className="w-6 h-6 text-purple-600 dark:text-purple-400" />
@@ -124,7 +124,7 @@ const Dashboard = () => {
                   drafts.map((post) => (
                     <div
                       key={post.id}
-                      className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 transition-all duration-200 hover:shadow-lg">
+                      className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 transition-all duration-200 shadow-[0_0_10px_rgba(0,0,0,0.1)] hover:shadow-[0_0_15px_rgba(0,0,0,0.2)]">
                       <p className="text-gray-900 dark:text-white text-lg mb-4">
                         {post.content}
                       </p>
