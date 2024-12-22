@@ -1,6 +1,5 @@
 {
     "recommendations": [
-        "blackboxapp.blackboxagent",
-        "meshintelligenttechnologiesinc.pieces-vscode"
+        "blackboxapp.blackboxagent"
     ]
 }

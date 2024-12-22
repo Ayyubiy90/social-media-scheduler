@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePost } from "../contexts/PostContext";
+import MediaUpload from "../components/MediaUpload";
 import {
   FilePlus2,
   FileText,
@@ -79,9 +80,8 @@ const CreatePost = () => {
   const [content, setContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [scheduledFor, setScheduledFor] = useState<string>("");
-  const [validationErrors, setValidationErrors] = useState<
-    Record<string, string>
-  >({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
 
   const validateForPlatforms = () => {
     const errors: Record<string, string> = {};
@@ -104,11 +104,27 @@ const CreatePost = () => {
     }
 
     try {
+      let mediaData;
+      if (mediaFile) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64String = reader.result as string;
+            resolve(base64String);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(mediaFile);
+        });
+        mediaData = { file: mediaFile, base64 };
+      }
+
       await createPost(
         content,
         selectedPlatforms,
-        scheduledFor ? new Date(scheduledFor) : undefined
+        scheduledFor ? new Date(scheduledFor) : undefined,
+        mediaData
       );
+      
       navigate("/dashboard");
     } catch (err) {
       console.error("Failed to create post:", err);
@@ -129,153 +145,147 @@ const CreatePost = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {/* Header */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 mb-8 transform transition-all duration-200 hover:shadow-xl">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
-                <FilePlus2 className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Create Post
-              </h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 px-6 py-8 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl">
+              <FilePlus2 className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
             </div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Create Post
+            </h1>
           </div>
+        </div>
 
-          {/* Main Content */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-6 py-8 transform transition-all duration-200 hover:shadow-xl">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {error && (
-                <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-400 rounded-r-lg">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                  <p>{error}</p>
-                </div>
-              )}
-
-              {/* Content Input */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Post Content
-                </label>
-                <textarea
-                  rows={6}
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white p-4 text-base transition-colors duration-200"
-                  placeholder="What's on your mind?"
-                />
+        {/* Main Content */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 px-6 py-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {error && (
+              <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-400 rounded-r-lg">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <p>{error}</p>
               </div>
+            )}
 
-              {/* Media Upload */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Upload Media
-                </label>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  className="block w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white p-3 text-base transition-colors duration-200"
-                />
-              </div>
+            {/* Content Input */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Post Content
+              </label>
+              <textarea
+                rows={6}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 
+                         shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 
+                         dark:bg-gray-700 dark:text-white p-4 text-base transition-colors duration-200
+                         hover:border-gray-400 dark:hover:border-gray-500"
+                placeholder="What's on your mind?"
+              />
+            </div>
 
-              {/* Platform Selection */}
-              <div className="space-y-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <Share2 className="w-4 h-4" />
-                  Select Platforms
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {PLATFORMS.map((platform) => {
-                    const isSelected = selectedPlatforms.includes(platform.id);
-                    return (
-                      <button
-                        key={platform.id}
-                        type="button"
-                        onClick={() => togglePlatform(platform.id)}
-                        className={`
-                          flex items-center justify-center gap-3 px-4 py-3
-                          rounded-lg text-sm font-medium
-                          transition-all duration-200
-                          ${platform.bgColor}
-                          ${
-                            isSelected
-                              ? platform.selectedBgColor
-                              : platform.hoverBgColor
-                          }
-                          ${
-                            isSelected
-                              ? "ring-2 ring-offset-2 ring-gray-500 dark:ring-offset-gray-800"
-                              : ""
-                          }
-                        `}>
-                        {platform.icon}
-                        <span>{platform.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {Object.entries(validationErrors).map(([platform, error]) => (
-                  <p
-                    key={platform}
-                    className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
-                    <AlertCircle className="w-4 h-4" />
-                    {error}
-                  </p>
-                ))}
-              </div>
+            {/* Media Upload */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Media
+              </label>
+              <MediaUpload onFileSelect={setMediaFile} />
+            </div>
 
-              {/* Schedule Input */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <CalendarClock className="w-4 h-4" />
-                  Schedule Post (Optional)
-                </label>
-                <input
-                  type="datetime-local"
-                  value={scheduledFor}
-                  onChange={(e) => setScheduledFor(e.target.value)}
-                  className="block w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white p-3 text-base transition-colors duration-200"
-                />
+            {/* Platform Selection */}
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <Share2 className="w-4 h-4" />
+                Select Platforms
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {PLATFORMS.map((platform) => {
+                  const isSelected = selectedPlatforms.includes(platform.id);
+                  return (
+                    <button
+                      key={platform.id}
+                      type="button"
+                      onClick={() => togglePlatform(platform.id)}
+                      className={`
+                        flex items-center justify-center gap-3 px-4 py-3
+                        rounded-lg text-sm font-medium
+                        transition-all duration-200 ease-in-out
+                        transform hover:scale-[1.02] active:scale-[0.98]
+                        ${platform.bgColor}
+                        ${isSelected ? platform.selectedBgColor : platform.hoverBgColor}
+                        ${
+                          isSelected
+                            ? "ring-2 ring-offset-2 ring-gray-500 dark:ring-offset-gray-800"
+                            : ""
+                        }
+                      `}>
+                      {platform.icon}
+                      <span>{platform.name}</span>
+                    </button>
+                  );
+                })}
               </div>
+              {Object.entries(validationErrors).map(([platform, error]) => (
+                <p
+                  key={platform}
+                  className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                  <AlertCircle className="w-4 h-4" />
+                  {error}
+                </p>
+              ))}
+            </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-end pt-4">
-                <button
-                  type="submit"
-                  disabled={loading || selectedPlatforms.length === 0}
-                  className={`
-                    inline-flex items-center gap-2 px-8 py-3 
-                    rounded-lg text-base font-medium text-white 
-                    bg-indigo-600 hover:bg-indigo-700 
-                    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 
-                    dark:focus:ring-offset-gray-800
-                    transition-all duration-200
-                    shadow-lg hover:shadow-xl
-                    ${
-                      loading || selectedPlatforms.length === 0
-                        ? "opacity-50 cursor-not-allowed"
-                        : ""
-                    }
-                  `}>
-                  {loading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-5 h-5" />
-                      Create Post
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
+            {/* Schedule Input */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <CalendarClock className="w-4 h-4" />
+                Schedule Post (Optional)
+              </label>
+              <input
+                type="datetime-local"
+                value={scheduledFor}
+                onChange={(e) => setScheduledFor(e.target.value)}
+                className="block w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 
+                         shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 
+                         dark:bg-gray-700 dark:text-white p-3 text-base transition-colors duration-200
+                         hover:border-gray-400 dark:hover:border-gray-500"
+              />
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end pt-6">
+              <button
+                type="submit"
+                disabled={loading || selectedPlatforms.length === 0}
+                className={`
+                  inline-flex items-center gap-2 px-8 py-3 
+                  rounded-lg text-base font-medium text-white 
+                  bg-indigo-600 hover:bg-indigo-700 
+                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 
+                  dark:focus:ring-offset-gray-800
+                  transition-all duration-200 ease-in-out
+                  transform hover:scale-[1.02] active:scale-[0.98]
+                  shadow-lg hover:shadow-xl
+                  ${loading || selectedPlatforms.length === 0 ? "opacity-50 cursor-not-allowed" : ""}
+                `}>
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    Create Post
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

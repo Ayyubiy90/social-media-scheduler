@@ -21,7 +21,8 @@ interface PostContextType {
   createPost: (
     content: string,
     platforms: string[],
-    scheduledFor?: Date
+    scheduledFor?: Date,
+    media?: { file: File; base64: string }
   ) => Promise<Post>;
   updatePost: (
     postId: string,
@@ -77,7 +78,8 @@ export function PostProvider({ children }: { children: ReactNode }) {
   const createPost = async (
     content: string,
     platforms: string[],
-    scheduledFor?: Date
+    scheduledFor?: Date,
+    media?: { file: File; base64: string }
   ): Promise<Post> => {
     setLoading(true);
     try {
@@ -86,6 +88,7 @@ export function PostProvider({ children }: { children: ReactNode }) {
         platforms,
         scheduledFor,
         draft: !scheduledFor,
+        media: media ? [media.base64] : undefined,
       });
 
       if (scheduledFor) {
