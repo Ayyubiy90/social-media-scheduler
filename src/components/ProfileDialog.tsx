@@ -147,7 +147,7 @@ export function ProfileDialog({
       className="fixed inset-0 z-50 overflow-hidden bg-black bg-opacity-25 backdrop-blur-sm"
       onClick={onClose}>
       <div
-        className="fixed top-20 left-4 right-12 md:inset-x-auto md:left-auto md:right-4 md:w-96 z-50 max-w-[95vw] w-full sm:max-w-md transform transition-all duration-300"
+        className="fixed top-20 left-2 right-16 md:inset-x-auto md:left-auto md:right-4 md:w-96 z-50 max-w-[95vw] w-full sm:max-w-md transform transition-all duration-300"
         onClick={(e) => e.stopPropagation()}>
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl transform transition-all duration-300 w-full animate-slide-in-left animate-fade-in">
           {/* Header with Profile Picture */}
