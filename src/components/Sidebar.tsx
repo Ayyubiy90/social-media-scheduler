@@ -35,7 +35,9 @@ interface SidebarProps {
 function ProfileIcon() {
   const { user, refreshUser } = useUser();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { profilePicture, loading: loadingPicture } = useProfilePicture(user?.photoURL || null);
+  const { profilePicture, loading: loadingPicture } = useProfilePicture(
+    user?.photoURL || null
+  );
 
   const getInitial = (email: string | null | undefined) => {
     return email ? email[0].toUpperCase() : "U";
@@ -58,7 +60,7 @@ function ProfileIcon() {
   const renderAvatar = () => {
     if (loadingPicture) {
       return (
-        <div className="h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+        <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
           <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
         </div>
       );
@@ -66,7 +68,7 @@ function ProfileIcon() {
 
     if (profilePicture) {
       return (
-        <div className="relative">
+        <div className="relative flex-shrink-0">
           <img
             className="h-12 w-12 rounded-full object-cover transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-lg"
             src={profilePicture}
@@ -79,7 +81,7 @@ function ProfileIcon() {
 
     return (
       <div
-        className={`h-12 w-12 rounded-full ${getProfileColor(
+        className={`flex-shrink-0 h-12 w-12 rounded-full ${getProfileColor(
           user?.email
         )} flex items-center justify-center text-white text-lg font-semibold transition-transform duration-200 transform group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 shadow-lg`}>
         {getInitial(user?.email)}
@@ -91,7 +93,7 @@ function ProfileIcon() {
     <>
       <div
         onClick={() => setIsProfileOpen(true)}
-        className="relative group cursor-pointer">
+        className="relative group cursor-pointer flex-shrink-0">
         {renderAvatar()}
       </div>
 
@@ -191,7 +193,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           </h2>
           <button
             onClick={onClose}
-            className="p-2.5 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md"
+            className="p-2.5 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 transition-all duration-200 transform hover:scale-105 active:scale-95"
             aria-label="Close menu">
             <PanelRightClose className="h-5 w-5" />
           </button>
@@ -200,13 +202,13 @@ export function Sidebar({ onClose }: SidebarProps) {
 
       {/* Profile Section */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-start space-x-4">
           <ProfileIcon />
-          <div>
-            <h3 className="text-base font-medium text-gray-900 dark:text-white">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-medium text-gray-900 dark:text-white truncate">
               {user?.displayName || "User"}
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
               {user?.email}
             </p>
           </div>
