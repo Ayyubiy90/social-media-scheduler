@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePost } from "../contexts/PostContext";
 import MediaUpload from "../components/MediaUpload";
+import { fileToBase64 } from "../utils/mediaUtils";
 import {
   FilePlus2,
   FileText,
@@ -80,8 +81,11 @@ const CreatePost = () => {
   const [content, setContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [scheduledFor, setScheduledFor] = useState<string>("");
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
   const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [isProcessingMedia, setIsProcessingMedia] = useState(false);
 
   const validateForPlatforms = () => {
     const errors: Record<string, string> = {};
@@ -104,17 +108,10 @@ const CreatePost = () => {
     }
 
     try {
+      setIsProcessingMedia(true);
       let mediaData;
       if (mediaFile) {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64String = reader.result as string;
-            resolve(base64String);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(mediaFile);
-        });
+        const base64 = await fileToBase64(mediaFile);
         mediaData = { file: mediaFile, base64 };
       }
 
@@ -124,10 +121,12 @@ const CreatePost = () => {
         scheduledFor ? new Date(scheduledFor) : undefined,
         mediaData
       );
-      
+
       navigate("/dashboard");
     } catch (err) {
       console.error("Failed to create post:", err);
+    } finally {
+      setIsProcessingMedia(false);
     }
   };
 
@@ -143,6 +142,9 @@ const CreatePost = () => {
       return newErrors;
     });
   };
+
+  const isSubmitDisabled =
+    loading || isProcessingMedia || selectedPlatforms.length === 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -193,7 +195,10 @@ const CreatePost = () => {
                 <FileText className="w-4 h-4" />
                 Media
               </label>
-              <MediaUpload onFileSelect={setMediaFile} />
+              <MediaUpload
+                onFileSelect={setMediaFile}
+                selectedPlatforms={selectedPlatforms}
+              />
             </div>
 
             {/* Platform Selection */}
@@ -216,7 +221,11 @@ const CreatePost = () => {
                         transition-all duration-200 ease-in-out
                         transform hover:scale-[1.02] active:scale-[0.98]
                         ${platform.bgColor}
-                        ${isSelected ? platform.selectedBgColor : platform.hoverBgColor}
+                        ${
+                          isSelected
+                            ? platform.selectedBgColor
+                            : platform.hoverBgColor
+                        }
                         ${
                           isSelected
                             ? "ring-2 ring-offset-2 ring-gray-500 dark:ring-offset-gray-800"
@@ -260,7 +269,7 @@ const CreatePost = () => {
             <div className="flex justify-end pt-6">
               <button
                 type="submit"
-                disabled={loading || selectedPlatforms.length === 0}
+                disabled={isSubmitDisabled}
                 className={`
                   inline-flex items-center gap-2 px-8 py-3 
                   rounded-lg text-base font-medium text-white 
@@ -270,12 +279,12 @@ const CreatePost = () => {
                   transition-all duration-200 ease-in-out
                   transform hover:scale-[1.02] active:scale-[0.98]
                   shadow-lg hover:shadow-xl
-                  ${loading || selectedPlatforms.length === 0 ? "opacity-50 cursor-not-allowed" : ""}
+                  ${isSubmitDisabled ? "opacity-50 cursor-not-allowed" : ""}
                 `}>
-                {loading ? (
+                {loading || isProcessingMedia ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Creating...
+                    {isProcessingMedia ? "Processing Media..." : "Creating..."}
                   </>
                 ) : (
                   <>

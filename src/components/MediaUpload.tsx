@@ -1,31 +1,87 @@
 import React, { useCallback, useState } from 'react';
-import { Upload, Image as ImageIcon, Film, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
+import { Upload, Image as ImageIcon, Film, X, Loader2, Info } from 'lucide-react';
+import { 
+  validateMediaFile, 
+  compressImage, 
+  fileToBase64, 
+  ALLOWED_IMAGE_TYPES, 
+  ALLOWED_VIDEO_TYPES,
+  PLATFORM_LIMITS,
+  MediaValidationResult
+} from '../utils/mediaUtils';
 
 interface MediaUploadProps {
   onFileSelect: (file: File | null) => void;
+  selectedPlatforms: string[];
 }
 
-const MediaUpload: React.FC<MediaUploadProps> = ({ onFileSelect }) => {
+const MediaUpload: React.FC<MediaUploadProps> = ({ onFileSelect, selectedPlatforms }) => {
   const [preview, setPreview] = useState<string | null>(null);
   const [fileType, setFileType] = useState<'image' | 'video' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [tips, setTips] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      const file = acceptedFiles[0];
-      onFileSelect(file);
-      
-      // Create preview URL and determine file type
-      const previewUrl = URL.createObjectURL(file);
+  const processFile = async (file: File) => {
+    setIsProcessing(true);
+    setError(null);
+    setTips([]);
+    
+    try {
+      // Validate for each selected platform
+      const allTips: string[] = [];
+      for (const platform of selectedPlatforms) {
+        const validation: MediaValidationResult = validateMediaFile(file, platform);
+        if (!validation.isValid) {
+          setError(validation.error || 'Invalid file');
+          if (validation.tips) {
+            setTips(validation.tips);
+          }
+          onFileSelect(null);
+          return;
+        }
+        // Collect tips from all platforms
+        if (validation.tips) {
+          allTips.push(...validation.tips);
+        }
+      }
+      setTips([...new Set(allTips)]); // Remove duplicates
+
+      let processedFile = file;
+      if (ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        // If multiple platforms selected, use the most restrictive settings
+        const platform = selectedPlatforms[0]; // Use first platform's settings for compression
+        processedFile = await compressImage(file, platform);
+        setFileType('image');
+      } else if (ALLOWED_VIDEO_TYPES.includes(file.type)) {
+        setFileType('video');
+      }
+
+      const previewUrl = await fileToBase64(processedFile);
       setPreview(previewUrl);
-      setFileType(file.type.startsWith('image/') ? 'image' : 'video');
+      onFileSelect(processedFile);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to process file');
+      setPreview(null);
+      onFileSelect(null);
+    } finally {
+      setIsProcessing(false);
     }
-  }, [onFileSelect]);
+  };
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length > 0) {
+      await processFile(acceptedFiles[0]);
+    }
+  }, [selectedPlatforms]);
 
   const clearMedia = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setPreview(null);
     setFileType(null);
+    setError(null);
+    setTips([]);
     onFileSelect(null);
   }, [onFileSelect]);
 
@@ -35,11 +91,57 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ onFileSelect }) => {
       'image/*': ['.jpeg', '.jpg', '.png', '.gif'],
       'video/*': ['.mp4', '.mov']
     },
-    multiple: false
+    multiple: false,
+    disabled: isProcessing
   });
+
+  const renderPlatformLimits = () => {
+    if (selectedPlatforms.length === 0) return null;
+
+    return (
+      <div className="mt-4 space-y-2 text-xs text-gray-500 dark:text-gray-400">
+        {selectedPlatforms.map(platform => {
+          const limits = PLATFORM_LIMITS[platform as keyof typeof PLATFORM_LIMITS];
+          if (!limits) return null;
+
+          return (
+            <div key={platform} className="flex flex-col gap-1">
+              <span className="font-medium capitalize">{platform} Limits:</span>
+              <span>
+                Images: {typeof limits.image === 'number' 
+                  ? `${Math.round(limits.image / (1024 * 1024))}MB` 
+                  : `JPEG: ${Math.round(limits.image.jpeg / (1024 * 1024))}MB, PNG: ${Math.round(limits.image.png / (1024 * 1024))}MB`}
+              </span>
+              <span>Videos: {Math.round(limits.video / (1024 * 1024))}MB</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="w-full">
+      {error && (
+        <div className="mb-2 p-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {tips.length > 0 && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+          <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-medium mb-2">
+            <Info className="w-4 h-4" />
+            <span>Tips for best results:</span>
+          </div>
+          <ul className="list-disc list-inside text-sm text-blue-600 dark:text-blue-300 space-y-1">
+            {tips.map((tip, index) => (
+              <li key={index}>{tip}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
       <div
         {...getRootProps()}
         className={`
@@ -50,12 +152,18 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ onFileSelect }) => {
             : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500'
           }
           ${preview ? 'h-[300px]' : 'h-[200px]'}
-          cursor-pointer group
+          ${isProcessing ? 'cursor-wait' : 'cursor-pointer'}
+          group
         `}
       >
         <input {...getInputProps()} />
         
-        {preview ? (
+        {isProcessing ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+            <span className="ml-2 text-gray-600 dark:text-gray-300">Processing media...</span>
+          </div>
+        ) : preview ? (
           <div className="absolute inset-0 flex items-center justify-center p-4">
             {fileType === 'image' ? (
               <img 
@@ -110,9 +218,10 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ onFileSelect }) => {
               </div>
               <div className="flex items-center gap-1">
                 <Film className="w-4 h-4" />
-                MP4, MOV
+                MP4
               </div>
             </div>
+            {renderPlatformLimits()}
           </div>
         )}
       </div>
