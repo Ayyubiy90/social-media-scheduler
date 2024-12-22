@@ -10,7 +10,7 @@ const {
   verifySession,
 } = require("./src/middleware/authMiddleware.cjs");
 const {
-  validatePostMiddleware,
+  validatePostMedia,
 } = require("./src/middleware/postValidation.cjs");
 const {
   createPostJob,
@@ -44,8 +44,8 @@ app.set("trust proxy", 1);
 app.use(cookieParser(process.env.VITE_SESSION_SECRET));
 
 // Body parser middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Session middleware - MUST be before passport initialization
 app.use(
@@ -105,12 +105,14 @@ const authRoutes = require("./authRoutes.cjs");
 const notificationRoutes = require("./notificationRoutes.cjs");
 const socialRoutes = require("./socialRoutes.cjs");
 const analyticsRoutes = require("./analyticsRoutes.cjs");
+const postRoutes = require("./postRoutes.cjs");
 
 // Mount routes
 app.use("/auth", authRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/analytics", analyticsRoutes);
 app.use("/social", socialRoutes);
+app.use("/posts", postRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -124,63 +126,17 @@ const initializeApp = async () => {
     const firebaseInit = require("./firebaseConfig.cjs");
     const db = await firebaseInit;
 
-    // Post management endpoints
-    app.post("/schedule", verifyToken, verifySession, (req, res) => {
+    // Post scheduling endpoint
+    app.post("/schedule", verifyToken, verifySession, async (req, res) => {
       const { platform, content, scheduledTime } = req.body;
-      createPostJob(platform, content, scheduledTime)
-        .then((jobId) => res.json({ jobId }))
-        .catch((error) =>
-          res.status(500).json({ error: "Failed to schedule post." })
-        );
-    });
-
-    app.post(
-      "/posts",
-      verifyToken,
-      verifySession,
-      validatePostMiddleware,
-      async (req, res) => {
-        const { content, platforms, draft } = req.body;
-        const { uid } = req.user;
-
-        try {
-          const newPost = {
-            content: {
-              text: content.text,
-              media: content.media || [],
-              links: content.links || [],
-            },
-            platforms: platforms.reduce((acc, platform) => {
-              acc[platform] = { enabled: true, status: "pending" };
-              return acc;
-            }, {}),
-            author: uid,
-            draft: draft || false,
-            status: draft ? "draft" : "pending",
-            analytics: {
-              likes: 0,
-              shares: 0,
-              comments: 0,
-              reach: 0,
-            },
-            metadata: {
-              createdAt: admin.firestore.FieldValue.serverTimestamp(),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              publishedAt: null,
-            },
-          };
-
-          const postRef = await db.collection("posts").add(newPost);
-          res.status(201).json({
-            message: "Post created successfully.",
-            postId: postRef.id,
-          });
-        } catch (error) {
-          console.error("Error creating post:", error);
-          res.status(500).json({ error: "Failed to create post." });
-        }
+      try {
+        const jobId = await createPostJob(platform, content, scheduledTime);
+        res.json({ jobId });
+      } catch (error) {
+        console.error("Failed to schedule post:", error);
+        res.status(500).json({ error: "Failed to schedule post." });
       }
-    );
+    });
 
     // Start the server
     app.listen(port, () => {

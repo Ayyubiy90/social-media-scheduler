@@ -4,6 +4,7 @@ import {
   subscribeToAuthChanges,
   logoutUser,
   registerUser,
+  loginUser,
 } from "../services/authService";
 import { clearProfilePictureCache } from "../hooks/useProfilePicture";
 
@@ -11,6 +12,7 @@ interface UserContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
+  login: (credentials: Credentials) => Promise<void>;
   register: (credentials: Credentials) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => void;
@@ -34,11 +36,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  const login = async (credentials: Credentials) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const user = await loginUser(credentials);
+      setUser(user);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const register = async (credentials: Credentials) => {
     try {
       setLoading(true);
       setError(null);
-      await registerUser(credentials);
+      const user = await registerUser(credentials);
+      setUser(user);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
       throw err;
@@ -80,6 +97,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         error,
+        login,
         register,
         logout,
         refreshUser,
