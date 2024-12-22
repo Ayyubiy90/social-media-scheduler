@@ -19,9 +19,51 @@ const AnalyticsContext = createContext<AnalyticsContextType | undefined>(
   undefined
 );
 
+const defaultPlatformStats: PlatformStats[] = [
+  {
+    platform: "facebook",
+    followers: 0,
+    engagement: 0,
+    posts: 0,
+    averageLikes: 0,
+    averageComments: 0,
+    averageShares: 0,
+  },
+  {
+    platform: "twitter",
+    followers: 0,
+    engagement: 0,
+    posts: 0,
+    averageLikes: 0,
+    averageComments: 0,
+    averageShares: 0,
+  },
+  {
+    platform: "linkedin",
+    followers: 0,
+    engagement: 0,
+    posts: 0,
+    averageLikes: 0,
+    averageComments: 0,
+    averageShares: 0,
+  },
+  {
+    platform: "instagram",
+    followers: 0,
+    engagement: 0,
+    posts: 0,
+    averageLikes: 0,
+    averageComments: 0,
+    averageShares: 0,
+  },
+];
+
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
-  const [engagementMetrics, setEngagementMetrics] = useState<EngagementMetrics[]>([]);
-  const [platformStats, setPlatformStats] = useState<PlatformStats[]>([]);
+  const [engagementMetrics, setEngagementMetrics] = useState<
+    EngagementMetrics[]
+  >([]);
+  const [platformStats, setPlatformStats] =
+    useState<PlatformStats[]>(defaultPlatformStats);
   const [postAnalytics, setPostAnalytics] = useState<PostAnalytics[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,20 +87,37 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       })();
 
       const [metrics, stats, posts] = await Promise.all([
-        analyticsService.getEngagementMetrics(
-          format(startDate, "yyyy-MM-dd"),
-          format(endDate, "yyyy-MM-dd")
-        ),
-        analyticsService.getPlatformStats(),
-        analyticsService.getPostAnalytics([]) // Pass actual post IDs here
+        analyticsService
+          .getEngagementMetrics(
+            format(startDate, "yyyy-MM-dd"),
+            format(endDate, "yyyy-MM-dd")
+          )
+          .catch((err) => {
+            console.error("Error fetching engagement metrics:", err);
+            return [];
+          }),
+        analyticsService.getPlatformStats().catch((err) => {
+          console.error("Error fetching platform stats:", err);
+          return defaultPlatformStats;
+        }),
+        analyticsService.getPostAnalytics([]).catch((err) => {
+          console.error("Error fetching post analytics:", err);
+          return [];
+        }),
       ]);
 
-      setEngagementMetrics(metrics);
-      setPlatformStats(stats);
-      setPostAnalytics(posts);
+      setEngagementMetrics(metrics || []);
+      setPlatformStats(stats || defaultPlatformStats);
+      setPostAnalytics(posts || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch analytics data");
       console.error("Analytics fetch error:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch analytics data"
+      );
+      // Set default values on error
+      setEngagementMetrics([]);
+      setPlatformStats(defaultPlatformStats);
+      setPostAnalytics([]);
     } finally {
       setLoading(false);
     }
@@ -89,7 +148,9 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 export function useAnalyticsContext() {
   const context = useContext(AnalyticsContext);
   if (context === undefined) {
-    throw new Error("useAnalyticsContext must be used within an AnalyticsProvider");
+    throw new Error(
+      "useAnalyticsContext must be used within an AnalyticsProvider"
+    );
   }
   return context;
 }
