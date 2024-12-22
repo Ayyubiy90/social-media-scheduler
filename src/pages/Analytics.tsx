@@ -34,7 +34,7 @@ function Analytics() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center">
         <div className="text-gray-600 dark:text-gray-300 flex items-center gap-3">
           <Activity className="w-5 h-5 animate-pulse" />
           Loading analytics...
@@ -45,7 +45,7 @@ function Analytics() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center">
         <div className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-4 py-3 rounded-lg">
           {error}
         </div>
@@ -54,7 +54,7 @@ function Analytics() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex-1 bg-gray-100 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           {/* Header */}
