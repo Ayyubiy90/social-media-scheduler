@@ -7,7 +7,7 @@ import React, {
   useEffect,
 } from "react";
 import { useUser } from "./UserContext";
-import { Post } from "../types/database";
+import { Post, CreatePostData } from "../types/database";
 import { postService } from "../services/postService";
 import { schedulingService } from "../services/schedulingService";
 
@@ -83,13 +83,16 @@ export function PostProvider({ children }: { children: ReactNode }) {
   ): Promise<Post> => {
     setLoading(true);
     try {
-      const newPost = await postService.createPost({
+      const postData: CreatePostData = {
         content,
         platforms,
         scheduledFor,
         draft: !scheduledFor,
         media: media ? [media.base64] : undefined,
-      });
+        mediaType: media ? (media.file.type.startsWith('image/') ? 'image' : 'video') : undefined
+      };
+
+      const newPost = await postService.createPost(postData);
 
       if (scheduledFor) {
         await schedulingService.schedulePost(newPost, scheduledFor);

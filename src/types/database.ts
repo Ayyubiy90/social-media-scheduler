@@ -22,12 +22,31 @@ export interface Post {
     userId: string;
     content: string;
     media?: string[];
+    mediaType?: 'image' | 'video'; // Added mediaType
     platforms: string[];
     status: 'draft' | 'scheduled' | 'published' | 'failed';
     scheduledFor?: Date;
     publishedAt?: Date;
     createdAt: Date;
     updatedAt: Date;
+}
+
+export interface CreatePostData {
+    content: string;
+    media?: string[];
+    mediaType?: 'image' | 'video'; // Added mediaType
+    platforms: string[];
+    scheduledFor?: Date;
+    draft?: boolean;
+}
+
+export interface UpdatePostData {
+    content?: string;
+    media?: string[];
+    mediaType?: 'image' | 'video'; // Added mediaType
+    platforms?: string[];
+    scheduledFor?: Date;
+    draft?: boolean;
 }
 
 export interface Notification {
