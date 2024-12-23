@@ -46,3 +46,5 @@ build/
 
 # Firebase service account key
 /backend/admin/serviceAccountKey.json
+
+.vercel

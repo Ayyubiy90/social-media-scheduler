@@ -67,7 +67,7 @@ export function Calendar() {
                 </button>
                 <button
                   onClick={() => setSelectedDate(new Date())}
-                  className="px-6 py-3 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors duration-200">
+                className="px-6 py-3 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors duration-200 w-full sm:w-auto">
                   Today
                 </button>
                 <button

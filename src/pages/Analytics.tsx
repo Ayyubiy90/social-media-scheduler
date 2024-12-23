@@ -64,7 +64,7 @@ function Analytics() {
                 <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
                   <BarChart2 className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white pr-2">
                   Analytics
                 </h1>
               </div>
@@ -73,7 +73,7 @@ function Analytics() {
                 onChange={(e) =>
                   setTimeframe(e.target.value as "week" | "month" | "year")
                 }
-                className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200">
+                className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 w-full sm:w-64">
                 <option value="week">Last 7 days</option>
                 <option value="month">Last 30 days</option>
                 <option value="year">Last year</option>
