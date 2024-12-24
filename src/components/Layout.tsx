@@ -46,7 +46,9 @@ export function Layout() {
         <div className="flex-grow">
           <Outlet />
         </div>
+      {!location.pathname.includes('/notifications') || window.innerWidth > 768 ? (
         <Footer />
+      ) : null}
       </main>
 
       {/* Overlay */}
