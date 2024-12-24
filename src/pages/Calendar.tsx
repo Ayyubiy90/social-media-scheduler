@@ -59,7 +59,7 @@ export function Calendar() {
                   Content Calendar
                 </h1>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={() => setSelectedDate(addDays(selectedDate, -7))}
                   className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors duration-200">
@@ -67,7 +67,7 @@ export function Calendar() {
                 </button>
                 <button
                   onClick={() => setSelectedDate(new Date())}
-                className="px-6 py-3 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors duration-200 w-full sm:w-auto">
+                  className="px-6 py-3 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors duration-200 w-full sm:w-auto">
                   Today
                 </button>
                 <button
